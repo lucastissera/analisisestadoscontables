@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx-js-style";
-import type { DatosFinancieros, FormatoRatio, RatioCalculado } from "../types";
+import type { DatosFinancieros, RatioCalculado } from "../types";
 import { CAMPOS_IMPORT_EXCEL } from "../types";
 
 const ALIAS: Record<string, keyof DatosFinancieros> = {
@@ -160,8 +160,26 @@ function redondear2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function numFmtValorRatio(formato: FormatoRatio): string {
-  return formato === "porcentaje" ? "0.00%" : "0.00";
+/** Formato Excel con unidad explícita en la celda (texto entre comillas en el numFmt). */
+function numFmtValorRatio(r: RatioCalculado): string {
+  switch (r.formato) {
+    case "porcentaje":
+      return "0.00%";
+    case "dias":
+      return '0.00" días"';
+    case "veces":
+      if (r.id === "deuda_financiera_sobre_ebitda") {
+        return '0.00" años"';
+      }
+      return '0.00" veces"';
+    case "indice":
+      if (r.id === "capital_trabajo") {
+        return '#,##0.00" (importe)"';
+      }
+      return '0.00" veces"';
+    default:
+      return "0.00";
+  }
 }
 
 function valorCeldaParaExcel(r: RatioCalculado): number | string {
@@ -368,7 +386,7 @@ function aplicarEstilosHojaAnalisis(ws: XLSX.WorkSheet, ratios: RatioCalculado[]
           if (typeof v === "number") {
             cell.v = v;
             cell.t = "n";
-            s.numFmt = numFmtValorRatio(r.formato);
+            s.numFmt = numFmtValorRatio(r);
             s.alignment = { ...prev.alignment, horizontal: "right" };
           }
         } else if (r && r.valor === null) {
@@ -408,7 +426,7 @@ export function exportarRatiosAXlsx(
   const ws = XLSX.utils.aoa_to_sheet(filasAnalisis);
   aplicarEstilosHojaAnalisis(ws, ratios);
 
-  const maxColsAnalisis = [120, 26, 26, 22, 110];
+  const maxColsAnalisis = [120, 26, 26, 28, 110];
   ws["!cols"] = anchosColumnasLibres(filasAnalisis, 5, maxColsAnalisis);
 
   const filasFormulas: (string | number)[][] =
