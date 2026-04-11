@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx-js-style";
-import type { DatosFinancieros } from "../types";
+import type { DatosFinancieros, FormatoRatio, RatioCalculado } from "../types";
 import { CAMPOS_IMPORT_EXCEL } from "../types";
 
 const ALIAS: Record<string, keyof DatosFinancieros> = {
@@ -131,6 +131,44 @@ function anchosColumnasDesdeFilas(
     const cap = maxPorIndice[i] ?? maxPorIndice[maxPorIndice.length - 1];
     return { wch: Math.min(cap, Math.max(minW, w + pad)) };
   });
+}
+
+/** Ancho por columna según el texto más largo en esa columna (tope opcional por índice). */
+function anchosColumnasLibres(
+  filas: (string | number)[][],
+  numColumnas: number,
+  maxPorIndice: number[],
+  minW = 10,
+  pad = 2
+): { wch: number }[] {
+  const maxPorCol = new Array(numColumnas).fill(0);
+  for (const row of filas) {
+    for (let c = 0; c < numColumnas; c++) {
+      const cell = row[c];
+      const len =
+        cell === undefined || cell === null ? 0 : String(cell).length;
+      if (len > maxPorCol[c]) maxPorCol[c] = len;
+    }
+  }
+  return maxPorCol.map((w, i) => {
+    const cap = maxPorIndice[i] ?? 100;
+    return { wch: Math.min(cap, Math.max(minW, w + pad)) };
+  });
+}
+
+function redondear2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function numFmtValorRatio(formato: FormatoRatio): string {
+  return formato === "porcentaje" ? "0.00%" : "0.00";
+}
+
+function valorCeldaParaExcel(r: RatioCalculado): number | string {
+  if (r.valor === null) return "";
+  const v = redondear2(r.valor);
+  if (r.formato === "porcentaje") return v / 100;
+  return v;
 }
 
 /** Fila 0 = encabezados, 1–2 = razón social y período (datos de la empresa). */
@@ -301,26 +339,91 @@ export function exportarPlantillaVacia(): ArrayBuffer {
   return exportarDatosAXlsx(vacio);
 }
 
+const FILAS_ENCABEZADO_ANALISIS = 4;
+const COL_VALOR_ANALISIS = 3;
+
+function aplicarEstilosHojaAnalisis(ws: XLSX.WorkSheet, ratios: RatioCalculado[]) {
+  const ref = ws["!ref"];
+  if (!ref) return;
+  const range = XLSX.utils.decode_range(ref);
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (!cell) continue;
+
+      const prev = cell.s ?? {};
+      const s: XLSX.CellStyle = { ...prev };
+
+      if (R < FILAS_ENCABEZADO_ANALISIS) {
+        s.font = { ...prev.font, bold: true };
+      }
+
+      if (C === COL_VALOR_ANALISIS && R >= FILAS_ENCABEZADO_ANALISIS) {
+        const idx = R - FILAS_ENCABEZADO_ANALISIS;
+        const r = ratios[idx];
+        if (r && r.valor !== null) {
+          const v = valorCeldaParaExcel(r);
+          if (typeof v === "number") {
+            cell.v = v;
+            cell.t = "n";
+            s.numFmt = numFmtValorRatio(r.formato);
+            s.alignment = { ...prev.alignment, horizontal: "right" };
+          }
+        } else if (r && r.valor === null) {
+          cell.v = "";
+          cell.t = "s";
+        }
+      }
+
+      cell.s = s;
+    }
+  }
+
+  const ultimaFila1Based = FILAS_ENCABEZADO_ANALISIS + ratios.length;
+  ws["!autofilter"] = {
+    ref: `A${FILAS_ENCABEZADO_ANALISIS}:E${ultimaFila1Based}`,
+  };
+}
+
 export function exportarRatiosAXlsx(
   d: DatosFinancieros,
-  ratios: { nombre: string; situacion: string; plazo: string; valorFmt: string; formula: string; explicacion: string }[]
+  ratios: RatioCalculado[]
 ): ArrayBuffer {
-  const resumen: (string | number)[][] = [
+  const filasAnalisis: (string | number)[][] = [
     ["Razón social", d.razonSocial],
     ["Período", d.periodo],
     [],
-    ["Ratio", "Situación", "Plazo", "Valor", "Fórmula", "Interpretación"],
+    ["Ratio", "Situación", "Plazo", "Valor", "Interpretación"],
     ...ratios.map((r) => [
       r.nombre,
       r.situacion === "economica" ? "Económica" : "Financiera",
       r.plazo === "corto" ? "Corto plazo" : "Largo plazo",
-      r.valorFmt,
-      r.formula,
+      valorCeldaParaExcel(r),
       r.explicacion,
     ]),
   ];
-  const ws = XLSX.utils.aoa_to_sheet(resumen);
+
+  const ws = XLSX.utils.aoa_to_sheet(filasAnalisis);
+  aplicarEstilosHojaAnalisis(ws, ratios);
+
+  const maxColsAnalisis = [120, 26, 26, 22, 110];
+  ws["!cols"] = anchosColumnasLibres(filasAnalisis, 5, maxColsAnalisis);
+
+  const filasFormulas: (string | number)[][] =
+    ratios.length > 0
+      ? ratios.map((r) => [r.nombre, r.formula])
+      : [["", ""]];
+  const wsForm = XLSX.utils.aoa_to_sheet(filasFormulas);
+  wsForm["!cols"] = anchosColumnasLibres(filasFormulas, 2, [100, 120]);
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Análisis");
-  return XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  XLSX.utils.book_append_sheet(wb, wsForm, "Fórmulas");
+  return XLSX.write(wb, {
+    bookType: "xlsx",
+    type: "array",
+    cellStyles: true,
+  });
 }

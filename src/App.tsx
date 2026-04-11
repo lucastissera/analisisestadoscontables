@@ -142,15 +142,7 @@ export default function App() {
   }
 
   function exportXlsxAnalisis() {
-    const rows = ratios.map((r) => ({
-      nombre: r.nombre,
-      situacion: r.situacion,
-      plazo: r.plazo,
-      valorFmt: fmtValor(r),
-      formula: r.formula,
-      explicacion: r.explicacion,
-    }));
-    const buf = exportarRatiosAXlsx(datos, rows);
+    const buf = exportarRatiosAXlsx(datos, ratios);
     const safe = (datos.razonSocial || "empresa").replace(/[^\w\-]+/g, "_").slice(0, 40);
     descargarBuffer(
       buf,
