@@ -39,6 +39,7 @@ const ALIAS_ESP: Record<string, keyof DatosFinancieros> = {
   periodo: "periodo",
   ejercicio: "periodo",
   "activo corriente": "activoCorriente",
+  "activo corriente (total)": "activoCorriente",
   "efectivo y equivalentes": "efectivoYEquivalentes",
   efectivo: "efectivoYEquivalentes",
   "créditos por ventas": "creditosPorVentas",
@@ -47,16 +48,19 @@ const ALIAS_ESP: Record<string, keyof DatosFinancieros> = {
   inventarios: "inventarios",
   "otros activos corrientes": "otrosActivosCorrientes",
   "activo no corriente": "activoNoCorriente",
+  "activo no corriente (total)": "activoNoCorriente",
   "bienes de uso": "bienesDeUso",
   "inversiones largo plazo": "inversionesLargoPlazo",
   intangibles: "intangibles",
   "otros activos no corrientes": "otrosActivosNoCorrientes",
   "pasivo corriente": "pasivoCorriente",
+  "pasivo corriente (total)": "pasivoCorriente",
   "deuda financiera corto plazo": "deudaFinancieraCortoPlazo",
   "deuda cp": "deudaFinancieraCortoPlazo",
   proveedores: "proveedores",
   "otros pasivos corrientes": "otrosPasivosCorrientes",
   "pasivo no corriente": "pasivoNoCorriente",
+  "pasivo no corriente (total)": "pasivoNoCorriente",
   "deuda financiera largo plazo": "deudaFinancieraLargoPlazo",
   "deuda lp": "deudaFinancieraLargoPlazo",
   "otros pasivos no corrientes": "otrosPasivosNoCorrientes",
@@ -68,6 +72,7 @@ const ALIAS_ESP: Record<string, keyof DatosFinancieros> = {
   "costo ventas": "costoDeVentas",
   "gastos operativos": "gastosOperativos",
   "gastos financieros": "gastosFinancieros",
+  "gastos financieros (intereses)": "gastosFinancieros",
   intereses: "gastosFinancieros",
   "resultado neto": "resultadoNeto",
   "amortizaciones y depreciaciones": "amortizacionesYDepreciaciones",
@@ -104,6 +109,30 @@ function filaVacia(row: unknown[]): boolean {
   return row.every((c) => c === undefined || c === null || String(c).trim() === "");
 }
 
+/** Anchos de columna en caracteres (`wch` de SheetJS) según el contenido más largo. */
+function anchosColumnasDesdeFilas(
+  filas: (string | number)[][],
+  numColumnas: number
+): { wch: number }[] {
+  const maxPorCol = new Array(numColumnas).fill(0);
+  for (const row of filas) {
+    for (let c = 0; c < numColumnas; c++) {
+      const cell = row[c];
+      const len =
+        cell === undefined || cell === null ? 0 : String(cell).length;
+      if (len > maxPorCol[c]) maxPorCol[c] = len;
+    }
+  }
+  const minW = 14;
+  /** Columna A: conceptos; B: valores (pueden ser razón social larga). */
+  const maxPorIndice = [56, 100];
+  const pad = 2;
+  return maxPorCol.map((w, i) => {
+    const cap = maxPorIndice[i] ?? maxPorIndice[maxPorIndice.length - 1];
+    return { wch: Math.min(cap, Math.max(minW, w + pad)) };
+  });
+}
+
 function asignarCelda(
   acc: Partial<DatosFinancieros>,
   key: keyof DatosFinancieros,
@@ -124,22 +153,12 @@ function asignarCelda(
   acc[key] = parseNumero(raw) as never;
 }
 
-/** Lee datos desde la primera hoja: filas [campo, valor] o cabecera + una fila de valores */
+/**
+ * Lee la primera hoja: una fila por concepto, columna A = concepto, columna B = valor.
+ * Opcional: primera fila con encabezados "Concepto" / "Valor" (se omite si no reconoce el concepto).
+ */
 export function importarDatosDesdeArrayDeFilas(rows: unknown[][]): Partial<DatosFinancieros> {
   const acc: Partial<DatosFinancieros> = {};
-
-  if (rows.length >= 2) {
-    const h = rows[0].map((c) => normalizarClave(c));
-    const v = rows[1];
-    let match = 0;
-    for (let i = 0; i < h.length; i++) {
-      const key = h[i];
-      if (!key) continue;
-      asignarCelda(acc, key, v[i]);
-      match++;
-    }
-    if (match >= 3) return acc;
-  }
 
   for (const row of rows) {
     if (!row || row.length < 2) continue;
@@ -163,43 +182,45 @@ export function exportarDatosAXlsx(d: DatosFinancieros): ArrayBuffer {
   const etiquetas: Record<keyof DatosFinancieros, string> = {
     razonSocial: "Razón social",
     periodo: "Período / ejercicio",
-    activoCorriente: "Activo corriente",
+    activoCorriente: "Activo corriente (total)",
     efectivoYEquivalentes: "Efectivo y equivalentes",
     creditosPorVentas: "Créditos por ventas",
     inventarios: "Inventarios",
     otrosActivosCorrientes: "Otros activos corrientes",
-    activoNoCorriente: "Activo no corriente",
+    activoNoCorriente: "Activo no corriente (total)",
     bienesDeUso: "Bienes de uso",
     inversionesLargoPlazo: "Inversiones largo plazo",
     intangibles: "Intangibles",
     otrosActivosNoCorrientes: "Otros activos no corrientes",
-    pasivoCorriente: "Pasivo corriente",
+    pasivoCorriente: "Pasivo corriente (total)",
     deudaFinancieraCortoPlazo: "Deuda financiera corto plazo",
     proveedores: "Proveedores",
     otrosPasivosCorrientes: "Otros pasivos corrientes",
-    pasivoNoCorriente: "Pasivo no corriente",
+    pasivoNoCorriente: "Pasivo no corriente (total)",
     deudaFinancieraLargoPlazo: "Deuda financiera largo plazo",
     otrosPasivosNoCorrientes: "Otros pasivos no corrientes",
     patrimonioNeto: "Patrimonio neto",
     ventasNetas: "Ventas netas",
     costoDeVentas: "Costo de ventas",
     gastosOperativos: "Gastos operativos",
-    gastosFinancieros: "Gastos financieros",
+    gastosFinancieros: "Gastos financieros (intereses)",
     resultadoNeto: "Resultado neto",
     amortizacionesYDepreciaciones: "Amortizaciones y depreciaciones",
     flujoEfectivoOperativo: "Flujo operativo (opcional)",
   };
 
   const filas: (string | number)[][] = [
-    CAMPOS_IMPORT_EXCEL.map((k) => etiquetas[k]),
-    CAMPOS_IMPORT_EXCEL.map((k) => {
+    ["Concepto", "Valor"],
+    ...CAMPOS_IMPORT_EXCEL.map((k) => {
       const v = d[k];
-      if (v === null || v === undefined) return "";
-      return v as string | number;
+      const celda =
+        v === null || v === undefined ? "" : (v as string | number);
+      return [etiquetas[k], celda];
     }),
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws["!cols"] = anchosColumnasDesdeFilas(filas, 2);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Datos");
   return XLSX.write(wb, { bookType: "xlsx", type: "array" });

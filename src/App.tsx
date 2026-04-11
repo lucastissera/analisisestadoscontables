@@ -129,7 +129,9 @@ export default function App() {
       setDatos((prev) => ({ ...prev, ...parcial }));
       setMontosBorrador({});
     } catch {
-      setErrorImport("No se pudo leer el archivo. Usá .xlsx o .xls con el formato de plantilla.");
+      setErrorImport(
+        "No se pudo leer el archivo. Usá .xlsx o .xls: columna A = concepto, columna B = valor (una fila por dato). Podés descargar la plantilla."
+      );
     }
   }
 
@@ -267,7 +269,8 @@ export default function App() {
     <>
       <h1>Análisis de estados contables</h1>
       <p className="subtitle">
-        Ingresá balances y cuenta de resultados (o importá Excel). Los ratios se clasifican en situación
+        Ingresá balances y cuenta de resultados, o importá Excel con una fila por concepto (columna A) y el
+        valor en la columna B. Los ratios se clasifican en situación
         económica / financiera y corto / largo plazo, con interpretación contextual para la empresa.
       </p>
 
