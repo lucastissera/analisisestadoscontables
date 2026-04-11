@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import type { DatosFinancieros } from "../types";
 import { CAMPOS_IMPORT_EXCEL } from "../types";
 
@@ -133,6 +133,43 @@ function anchosColumnasDesdeFilas(
   });
 }
 
+/** Fila 0 = encabezados, 1–2 = razón social y período (datos de la empresa). */
+const FILAS_EMPRESA_NEGRITA = 3;
+
+/** Formato tipo contabilidad: separador de miles y 2 decimales (Excel aplica símbolo según región). */
+const NUM_FMT_CONTABILIDAD = "_-* #,##0.00_-;\\-* #,##0.00_-;_-* \"-\"??_-;_-@_-";
+
+function aplicarEstilosHojaDatos(ws: XLSX.WorkSheet) {
+  const ref = ws["!ref"];
+  if (!ref) return;
+  const range = XLSX.utils.decode_range(ref);
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (!cell) continue;
+
+      const prev = cell.s ?? {};
+      const s: XLSX.CellStyle = { ...prev };
+
+      if (R < FILAS_EMPRESA_NEGRITA) {
+        s.font = { ...prev.font, bold: true };
+      }
+
+      if (C === 1 && R >= FILAS_EMPRESA_NEGRITA) {
+        const v = cell.v;
+        if (typeof v === "number" && Number.isFinite(v)) {
+          s.numFmt = NUM_FMT_CONTABILIDAD;
+          s.alignment = { ...prev.alignment, horizontal: "right" };
+        }
+      }
+
+      cell.s = s;
+    }
+  }
+}
+
 function asignarCelda(
   acc: Partial<DatosFinancieros>,
   key: keyof DatosFinancieros,
@@ -221,9 +258,14 @@ export function exportarDatosAXlsx(d: DatosFinancieros): ArrayBuffer {
 
   const ws = XLSX.utils.aoa_to_sheet(filas);
   ws["!cols"] = anchosColumnasDesdeFilas(filas, 2);
+  aplicarEstilosHojaDatos(ws);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Datos");
-  return XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  return XLSX.write(wb, {
+    bookType: "xlsx",
+    type: "array",
+    cellStyles: true,
+  });
 }
 
 export function exportarPlantillaVacia(): ArrayBuffer {
