@@ -174,7 +174,7 @@ function numFmtValorRatio(r: RatioCalculado): string {
       return '0.00" veces"';
     case "indice":
       if (r.id === "capital_trabajo") {
-        return '#,##0.00" (importe)"';
+        return '$#,##0.00" (importe)"';
       }
       return '0.00" veces"';
     default:
