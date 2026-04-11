@@ -10,26 +10,41 @@ import { generarPdfAnalisis } from "./logic/pdfExport";
 import { calcularRatios } from "./logic/ratios";
 import type { DatosFinancieros, RatioCalculado } from "./types";
 
-const CAMPOS: { key: keyof DatosFinancieros; label: string; tipo: "texto" | "numero" }[] = [
+type CampoDef = {
+  key: keyof DatosFinancieros;
+  label: string;
+  tipo: "texto" | "numero";
+};
+
+const CAMPOS_IDENTIFICACION: CampoDef[] = [
   { key: "razonSocial", label: "Razón social", tipo: "texto" },
   { key: "periodo", label: "Período / ejercicio", tipo: "texto" },
-  { key: "activoCorriente", label: "Activo corriente", tipo: "numero" },
+];
+
+const COLUMNA_ACTIVO: CampoDef[] = [
+  { key: "activoCorriente", label: "Activo corriente (total)", tipo: "numero" },
   { key: "efectivoYEquivalentes", label: "Efectivo y equivalentes", tipo: "numero" },
   { key: "creditosPorVentas", label: "Créditos por ventas", tipo: "numero" },
   { key: "inventarios", label: "Inventarios", tipo: "numero" },
   { key: "otrosActivosCorrientes", label: "Otros activos corrientes", tipo: "numero" },
-  { key: "activoNoCorriente", label: "Activo no corriente", tipo: "numero" },
+  { key: "activoNoCorriente", label: "Activo no corriente (total)", tipo: "numero" },
   { key: "bienesDeUso", label: "Bienes de uso", tipo: "numero" },
   { key: "inversionesLargoPlazo", label: "Inversiones largo plazo", tipo: "numero" },
   { key: "intangibles", label: "Intangibles", tipo: "numero" },
   { key: "otrosActivosNoCorrientes", label: "Otros activos no corrientes", tipo: "numero" },
-  { key: "pasivoCorriente", label: "Pasivo corriente", tipo: "numero" },
+];
+
+const COLUMNA_PASIVO: CampoDef[] = [
+  { key: "pasivoCorriente", label: "Pasivo corriente (total)", tipo: "numero" },
   { key: "deudaFinancieraCortoPlazo", label: "Deuda financiera corto plazo", tipo: "numero" },
   { key: "proveedores", label: "Proveedores", tipo: "numero" },
   { key: "otrosPasivosCorrientes", label: "Otros pasivos corrientes", tipo: "numero" },
-  { key: "pasivoNoCorriente", label: "Pasivo no corriente", tipo: "numero" },
+  { key: "pasivoNoCorriente", label: "Pasivo no corriente (total)", tipo: "numero" },
   { key: "deudaFinancieraLargoPlazo", label: "Deuda financiera largo plazo", tipo: "numero" },
   { key: "otrosPasivosNoCorrientes", label: "Otros pasivos no corrientes", tipo: "numero" },
+];
+
+const COLUMNA_PATRIMONIO_Y_RESULTADOS: CampoDef[] = [
   { key: "patrimonioNeto", label: "Patrimonio neto", tipo: "numero" },
   { key: "ventasNetas", label: "Ventas netas", tipo: "numero" },
   { key: "costoDeVentas", label: "Costo de ventas", tipo: "numero" },
@@ -39,7 +54,7 @@ const CAMPOS: { key: keyof DatosFinancieros; label: string; tipo: "texto" | "num
   { key: "amortizacionesYDepreciaciones", label: "Amortizaciones y depreciaciones", tipo: "numero" },
   {
     key: "flujoEfectivoOperativo",
-    label: "Flujo operativo (estado de efectivo, opcional)",
+    label: "Flujo operativo (opcional)",
     tipo: "numero",
   },
 ];
@@ -162,6 +177,46 @@ export default function App() {
     descargarBuffer(buf, "plantilla_balance_analisis.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 
+  function campoInput({ key, label, tipo }: CampoDef) {
+    return (
+      <label key={key} className="field">
+        <span className="name">{label}</span>
+        {tipo === "texto" ? (
+          <input
+            type="text"
+            value={String(datos[key])}
+            onChange={(e) => actualizar(key, e.target.value as DatosFinancieros[typeof key])}
+          />
+        ) : key === "flujoEfectivoOperativo" ? (
+          <input
+            type="number"
+            step="any"
+            placeholder="Vacío: RN + amortizaciones"
+            value={datos.flujoEfectivoOperativo === null ? "" : datos.flujoEfectivoOperativo}
+            onChange={(e) => {
+              const t = e.target.value.trim();
+              if (t === "") {
+                actualizar("flujoEfectivoOperativo", null);
+                return;
+              }
+              const n = parseFloat(t.replace(",", "."));
+              actualizar("flujoEfectivoOperativo", Number.isFinite(n) ? n : null);
+            }}
+          />
+        ) : (
+          <input
+            type="number"
+            step="any"
+            value={Number.isFinite(datos[key] as number) ? (datos[key] as number) : 0}
+            onChange={(e) =>
+              actualizar(key, (parseFloat(e.target.value) || 0) as DatosFinancieros[typeof key])
+            }
+          />
+        )}
+      </label>
+    );
+  }
+
   return (
     <>
       <h1>Análisis de estados contables</h1>
@@ -195,47 +250,20 @@ export default function App() {
 
       <div className="panel">
         <h2>Datos contables</h2>
-        <div className="grid-form">
-          {CAMPOS.map(({ key, label, tipo }) => (
-            <label key={key} className="field">
-              <span className="name">{label}</span>
-              {tipo === "texto" ? (
-                <input
-                  type="text"
-                  value={String(datos[key])}
-                  onChange={(e) => actualizar(key, e.target.value as DatosFinancieros[typeof key])}
-                />
-              ) : key === "flujoEfectivoOperativo" ? (
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="Vacío: RN + amortizaciones"
-                  value={datos.flujoEfectivoOperativo === null ? "" : datos.flujoEfectivoOperativo}
-                  onChange={(e) => {
-                    const t = e.target.value.trim();
-                    if (t === "") {
-                      actualizar("flujoEfectivoOperativo", null);
-                      return;
-                    }
-                    const n = parseFloat(t.replace(",", "."));
-                    actualizar(
-                      "flujoEfectivoOperativo",
-                      Number.isFinite(n) ? n : null
-                    );
-                  }}
-                />
-              ) : (
-                <input
-                  type="number"
-                  step="any"
-                  value={Number.isFinite(datos[key] as number) ? (datos[key] as number) : 0}
-                  onChange={(e) =>
-                    actualizar(key, (parseFloat(e.target.value) || 0) as DatosFinancieros[typeof key])
-                  }
-                />
-              )}
-            </label>
-          ))}
+        <div className="form-identificacion">{CAMPOS_IDENTIFICACION.map(campoInput)}</div>
+        <div className="form-tres-columnas">
+          <div className="form-columna">
+            <h3 className="form-columna-titulo">Activo</h3>
+            <div className="form-columna-campos">{COLUMNA_ACTIVO.map(campoInput)}</div>
+          </div>
+          <div className="form-columna">
+            <h3 className="form-columna-titulo">Pasivo</h3>
+            <div className="form-columna-campos">{COLUMNA_PASIVO.map(campoInput)}</div>
+          </div>
+          <div className="form-columna">
+            <h3 className="form-columna-titulo">Patrimonio neto y resultados</h3>
+            <div className="form-columna-campos">{COLUMNA_PATRIMONIO_Y_RESULTADOS.map(campoInput)}</div>
+          </div>
         </div>
       </div>
 
