@@ -7,6 +7,8 @@ import {
   importarDesdeArchivo,
 } from "./logic/excelIO";
 import { generarPdfAnalisis } from "./logic/pdfExport";
+import { formatearValorRatio } from "./logic/formatoRatios";
+import { montoAStringEdicion, parseMontoIngreso } from "./logic/numerosFormulario";
 import { calcularRatios } from "./logic/ratios";
 import type { DatosFinancieros, RatioCalculado } from "./types";
 
@@ -60,18 +62,7 @@ const COLUMNA_PATRIMONIO_Y_RESULTADOS: CampoDef[] = [
 ];
 
 function fmtValor(r: RatioCalculado): string {
-  if (r.valor === null) return "N/D";
-  const n = r.valor;
-  switch (r.formato) {
-    case "porcentaje":
-      return `${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
-    case "dias":
-      return `${Math.round(n).toLocaleString("es-AR")} días`;
-    case "veces":
-      return `${n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} veces`;
-    default:
-      return n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
+  return formatearValorRatio(r.formato, r.valor);
 }
 
 function descargarBuffer(buf: ArrayBuffer, nombre: string, mime: string) {
@@ -189,27 +180,36 @@ export default function App() {
           />
         ) : key === "flujoEfectivoOperativo" ? (
           <input
-            type="number"
-            step="any"
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
             placeholder="Vacío: RN + amortizaciones"
-            value={datos.flujoEfectivoOperativo === null ? "" : datos.flujoEfectivoOperativo}
+            value={
+              datos.flujoEfectivoOperativo === null
+                ? ""
+                : montoAStringEdicion(datos.flujoEfectivoOperativo)
+            }
             onChange={(e) => {
               const t = e.target.value.trim();
               if (t === "") {
                 actualizar("flujoEfectivoOperativo", null);
                 return;
               }
-              const n = parseFloat(t.replace(",", "."));
+              const n = parseMontoIngreso(t);
               actualizar("flujoEfectivoOperativo", Number.isFinite(n) ? n : null);
             }}
           />
         ) : (
           <input
-            type="number"
-            step="any"
-            value={Number.isFinite(datos[key] as number) ? (datos[key] as number) : 0}
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            value={montoAStringEdicion(datos[key] as number)}
             onChange={(e) =>
-              actualizar(key, (parseFloat(e.target.value) || 0) as DatosFinancieros[typeof key])
+              actualizar(
+                key,
+                parseMontoIngreso(e.target.value) as DatosFinancieros[typeof key]
+              )
             }
           />
         )}
@@ -250,6 +250,10 @@ export default function App() {
 
       <div className="panel">
         <h2>Datos contables</h2>
+        <p className="form-montos-hint">
+          Montos con decimales: punto o coma como separador; si usás coma, los puntos se interpretan como miles
+          (ej. 1.234,56).
+        </p>
         <div className="form-identificacion">{CAMPOS_IDENTIFICACION.map(campoInput)}</div>
         <div className="form-tres-columnas">
           <div className="form-columna">

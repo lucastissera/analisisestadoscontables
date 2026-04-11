@@ -1,21 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { DatosFinancieros, RatioCalculado } from "../types";
-
-function fmtValor(r: RatioCalculado): string {
-  if (r.valor === null) return "N/D";
-  const n = r.valor;
-  switch (r.formato) {
-    case "porcentaje":
-      return `${n.toFixed(2)} %`;
-    case "dias":
-      return `${Math.round(n)} días`;
-    case "veces":
-      return `${n.toFixed(2)} veces`;
-    default:
-      return n.toFixed(2);
-  }
-}
+import { formatearValorRatio } from "./formatoRatios";
 
 export function generarPdfAnalisis(d: DatosFinancieros, ratios: RatioCalculado[]): Blob {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -35,7 +21,7 @@ export function generarPdfAnalisis(d: DatosFinancieros, ratios: RatioCalculado[]
     r.nombre,
     r.situacion === "economica" ? "Económica" : "Financiera",
     r.plazo === "corto" ? "Corto" : "Largo",
-    fmtValor(r),
+    formatearValorRatio(r.formato, r.valor),
     r.formula,
   ]);
 

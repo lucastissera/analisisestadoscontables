@@ -1,24 +1,8 @@
 import type { DatosFinancieros, RatioCalculado } from "../types";
-
-function fmtNum(n: number, dec = 2): string {
-  return n.toLocaleString("es-AR", {
-    minimumFractionDigits: dec,
-    maximumFractionDigits: dec,
-  });
-}
+import { formatearValorRatio } from "./formatoRatios";
 
 function fmtValor(r: Pick<RatioCalculado, "formato" | "valor">): string {
-  if (r.valor === null) return "N/D";
-  switch (r.formato) {
-    case "porcentaje":
-      return `${fmtNum(r.valor, 2)} %`;
-    case "dias":
-      return `${fmtNum(r.valor, 0)} días`;
-    case "veces":
-      return `${fmtNum(r.valor, 2)} veces`;
-    default:
-      return fmtNum(r.valor, 2);
-  }
+  return formatearValorRatio(r.formato, r.valor);
 }
 
 export function enriquecerExplicaciones(

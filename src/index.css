@@ -68,6 +68,13 @@ h2 {
   gap: 0.65rem 1rem;
 }
 
+.form-montos-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: -0.35rem 0 1rem;
+  line-height: 1.4;
+}
+
 .form-identificacion {
   display: grid;
   grid-template-columns: 1.4fr 0.6fr;
