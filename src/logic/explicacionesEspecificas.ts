@@ -1,16 +1,27 @@
-import type { DatosFinancieros, RatioCalculado } from "../types";
-import { formatearValorRatio } from "./formatoRatios";
+import type { DatosFinancieros, FormatoRatio, RatioCalculado } from "../types";
 
-function num(
-  n: number,
-  opts: { min?: number; max?: number; grouping?: boolean } = {}
-): string {
-  const { min = 2, max = 6, grouping = true } = opts;
-  return n.toLocaleString("es-AR", {
-    minimumFractionDigits: min,
-    maximumFractionDigits: max,
+/** Redondeo a 2 decimales y formato es-AR para textos de interpretación. */
+function num(n: number, grouping = true): string {
+  const r = Number(n.toFixed(2));
+  return r.toLocaleString("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
     useGrouping: grouping,
   });
+}
+
+function fmtValorInterpretacion(formato: FormatoRatio, valor: number): string {
+  const s = num(valor);
+  switch (formato) {
+    case "porcentaje":
+      return `${s} %`;
+    case "dias":
+      return `${s} días`;
+    case "veces":
+      return `${s} veces`;
+    default:
+      return s;
+  }
 }
 
 function refEmpresa(d: DatosFinancieros): string {
@@ -51,70 +62,70 @@ export function explicacionEspecificaNarrativa(
       return `Por cada $1 de pasivo corriente, ${entidad} tiene $${num(v)} en activo corriente neto de inventarios en ${periodo}.`;
 
     case "capital_trabajo":
-      return `En ${periodo}, el capital de trabajo de ${entidad} es de $${num(v, { min: 2, max: 2 })}.`;
+      return `En ${periodo}, el capital de trabajo de ${entidad} es de $${num(v)}.`;
 
     case "rotacion_cxc": {
       if (v <= 0) return sinDatos(d, r);
       const dias = 365 / v;
-      return `El plazo medio de cobro de ${entidad} es de ${num(dias, { min: 1, max: 1 })} días en ${periodo}.`;
+      return `El plazo medio de cobro de ${entidad} es de ${num(dias)} días en ${periodo}.`;
     }
 
     case "plazo_cobro_dias":
-      return `El plazo medio de cobro es de ${num(v, { min: 1, max: 1 })} días en ${periodo}.`;
+      return `El plazo medio de cobro es de ${num(v)} días en ${periodo}.`;
 
     case "rotacion_inventarios": {
       if (v <= 0) return sinDatos(d, r);
       const dias = 365 / v;
-      return `Los inventarios rotan ${num(v, { min: 2, max: 2 })} veces al año; el plazo medio en stock se estima en ${num(dias, { min: 1, max: 1 })} días en ${periodo}.`;
+      return `Los inventarios rotan ${num(v)} veces al año; el plazo medio en stock se estima en ${num(dias)} días en ${periodo}.`;
     }
 
     case "plazo_inventario_dias":
-      return `El plazo medio de permanencia en inventario es de ${num(v, { min: 1, max: 1 })} días en ${periodo}.`;
+      return `El plazo medio de permanencia en inventario es de ${num(v)} días en ${periodo}.`;
 
     case "margen_bruto":
-      return `El margen bruto representa el ${num(v, { min: 2, max: 2 })} % de las ventas netas en ${periodo}.`;
+      return `El margen bruto representa el ${num(v)} % de las ventas netas en ${periodo}.`;
 
     case "margen_operativo":
-      return `El margen operativo representa el ${num(v, { min: 2, max: 2 })} % de las ventas netas en ${periodo}.`;
+      return `El margen operativo representa el ${num(v)} % de las ventas netas en ${periodo}.`;
 
     case "margen_neto":
-      return `El margen neto representa el ${num(v, { min: 2, max: 2 })} % de las ventas netas en ${periodo}.`;
+      return `El margen neto representa el ${num(v)} % de las ventas netas en ${periodo}.`;
 
     case "roa":
-      return `El resultado neto representa el ${num(v, { min: 2, max: 2 })} % del activo total en ${periodo}.`;
+      return `El resultado neto representa el ${num(v)} % del activo total en ${periodo}.`;
 
     case "roe":
-      return `El resultado neto representa el ${num(v, { min: 2, max: 2 })} % del patrimonio neto en ${periodo}.`;
+      return `El resultado neto representa el ${num(v)} % del patrimonio neto en ${periodo}.`;
 
     case "rotacion_activos":
       return `Por cada $1 de activo total, ${entidad} generó $${num(v)} de ventas netas en ${periodo}.`;
 
     case "endeudamiento_total":
-      return `El pasivo total representa el ${num(v, { min: 2, max: 2 })} % del activo total en ${periodo}.`;
+      return `El pasivo total representa el ${num(v)} % del activo total en ${periodo}.`;
 
     case "endeudamiento_patrimonial":
       return `Por cada $1 de patrimonio neto, la deuda financiera total asciende a $${num(v)} en ${periodo}.`;
 
     case "cobertura_intereses":
-      return `El resultado operativo cubre ${num(v, { min: 2, max: 2 })} veces los gastos financieros en ${periodo}.`;
+      return `El resultado operativo cubre ${num(v)} veces los gastos financieros en ${periodo}.`;
 
     case "solvencia":
       return `Por cada $1 de pasivo total, ${entidad} cuenta con $${num(v)} de activo total en ${periodo}.`;
 
     case "patrimonio_activo":
-      return `El patrimonio neto representa el ${num(v, { min: 2, max: 2 })} % del activo total en ${periodo}.`;
+      return `El patrimonio neto representa el ${num(v)} % del activo total en ${periodo}.`;
 
     case "margen_ebitda":
-      return `El EBITDA representa el ${num(v, { min: 2, max: 2 })} % de las ventas netas en ${periodo}.`;
+      return `El EBITDA representa el ${num(v)} % de las ventas netas en ${periodo}.`;
 
     case "cobertura_ebitda_intereses":
-      return `El EBITDA cubre ${num(v, { min: 2, max: 2 })} veces los gastos financieros en ${periodo}.`;
+      return `El EBITDA cubre ${num(v)} veces los gastos financieros en ${periodo}.`;
 
     case "deuda_financiera_sobre_ebitda":
-      return `La deuda financiera equivale a ${num(v, { min: 2, max: 2 })} veces el EBITDA del ejercicio en ${periodo}.`;
+      return `La deuda financiera equivale a ${num(v)} veces el EBITDA del ejercicio en ${periodo}.`;
 
     case "margen_flujo_operativo":
-      return `El flujo operativo representa el ${num(v, { min: 2, max: 2 })} % de las ventas netas en ${periodo}.`;
+      return `El flujo operativo representa el ${num(v)} % de las ventas netas en ${periodo}.`;
 
     case "flujo_sobre_deuda_financiera":
       return `Por cada $1 de deuda financiera, el flujo operativo del ejercicio fue de $${num(v)} en ${periodo}.`;
@@ -126,12 +137,12 @@ export function explicacionEspecificaNarrativa(
       return `Por cada $1 de patrimonio neto, ${entidad} mantiene $${num(v)} de activo total en ${periodo}.`;
 
     case "roe_dupont":
-      return `El ROE vía DuPont alcanza el ${num(v, { min: 2, max: 2 })} % en ${periodo}.`;
+      return `El ROE vía DuPont alcanza el ${num(v)} % en ${periodo}.`;
 
     case "plazo_pago_proveedores":
-      return `El plazo medio de pago a proveedores es de ${num(v, { min: 1, max: 1 })} días en ${periodo}.`;
+      return `El plazo medio de pago a proveedores es de ${num(v)} días en ${periodo}.`;
 
     default:
-      return `En ${entidad}, el indicador arroja ${formatearValorRatio(r.formato, v)} para ${periodo}.`;
+      return `En ${entidad}, el indicador arroja ${fmtValorInterpretacion(r.formato, v)} para ${periodo}.`;
   }
 }
