@@ -83,6 +83,10 @@ function grupoTitulo(s: "economica" | "financiera", p: "corto" | "largo") {
 
 export default function App() {
   const [datos, setDatos] = useState<DatosFinancieros>({ ...datosPorDefecto });
+  /** Texto libre mientras el input tiene foco (permite tipear "12." sin que se borre el punto). */
+  const [montosBorrador, setMontosBorrador] = useState<
+    Partial<Record<keyof DatosFinancieros, string>>
+  >({});
   const [errorImport, setErrorImport] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -123,6 +127,7 @@ export default function App() {
       const buf = await f.arrayBuffer();
       const parcial = importarDesdeArchivo(buf);
       setDatos((prev) => ({ ...prev, ...parcial }));
+      setMontosBorrador({});
     } catch {
       setErrorImport("No se pudo leer el archivo. Usá .xlsx o .xls con el formato de plantilla.");
     }
@@ -185,18 +190,40 @@ export default function App() {
             autoComplete="off"
             placeholder="Vacío: RN + amortizaciones"
             value={
-              datos.flujoEfectivoOperativo === null
-                ? ""
-                : montoAStringEdicion(datos.flujoEfectivoOperativo)
+              montosBorrador.flujoEfectivoOperativo !== undefined
+                ? montosBorrador.flujoEfectivoOperativo
+                : datos.flujoEfectivoOperativo === null
+                  ? ""
+                  : montoAStringEdicion(datos.flujoEfectivoOperativo)
             }
+            onFocus={() => {
+              setMontosBorrador((m) => ({
+                ...m,
+                flujoEfectivoOperativo:
+                  datos.flujoEfectivoOperativo === null
+                    ? ""
+                    : montoAStringEdicion(datos.flujoEfectivoOperativo),
+              }));
+            }}
             onChange={(e) => {
-              const t = e.target.value.trim();
-              if (t === "") {
+              setMontosBorrador((m) => ({
+                ...m,
+                flujoEfectivoOperativo: e.target.value,
+              }));
+            }}
+            onBlur={(e) => {
+              const raw = e.target.value.trim();
+              setMontosBorrador((m) => {
+                const n = { ...m };
+                delete n.flujoEfectivoOperativo;
+                return n;
+              });
+              if (raw === "") {
                 actualizar("flujoEfectivoOperativo", null);
-                return;
+              } else {
+                const n = parseMontoIngreso(raw);
+                actualizar("flujoEfectivoOperativo", Number.isFinite(n) ? n : null);
               }
-              const n = parseMontoIngreso(t);
-              actualizar("flujoEfectivoOperativo", Number.isFinite(n) ? n : null);
             }}
           />
         ) : (
@@ -204,13 +231,32 @@ export default function App() {
             type="text"
             inputMode="decimal"
             autoComplete="off"
-            value={montoAStringEdicion(datos[key] as number)}
-            onChange={(e) =>
+            value={
+              montosBorrador[key] !== undefined
+                ? montosBorrador[key]!
+                : montoAStringEdicion(datos[key] as number)
+            }
+            onFocus={() => {
+              setMontosBorrador((m) => ({
+                ...m,
+                [key]: montoAStringEdicion(datos[key] as number),
+              }));
+            }}
+            onChange={(e) => {
+              setMontosBorrador((m) => ({ ...m, [key]: e.target.value }));
+            }}
+            onBlur={(e) => {
+              const raw = e.target.value;
+              setMontosBorrador((m) => {
+                const n = { ...m };
+                delete n[key];
+                return n;
+              });
               actualizar(
                 key,
-                parseMontoIngreso(e.target.value) as DatosFinancieros[typeof key]
-              )
-            }
+                parseMontoIngreso(raw) as DatosFinancieros[typeof key]
+              );
+            }}
           />
         )}
       </label>
@@ -233,7 +279,14 @@ export default function App() {
         <button type="button" className="secondary" onClick={plantilla}>
           Descargar plantilla
         </button>
-        <button type="button" className="secondary" onClick={() => setDatos({ ...datosPorDefecto })}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            setDatos({ ...datosPorDefecto });
+            setMontosBorrador({});
+          }}
+        >
           Restaurar ejemplo
         </button>
         <button type="button" onClick={exportXlsxDatos}>
