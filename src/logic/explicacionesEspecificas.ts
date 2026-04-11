@@ -19,6 +19,8 @@ function fmtValorInterpretacion(formato: FormatoRatio, valor: number): string {
       return `${s} días`;
     case "veces":
       return `${s} veces`;
+    case "monto":
+      return `$${s}`;
     default:
       return s;
   }
@@ -97,6 +99,12 @@ export function explicacionEspecificaNarrativa(
     case "roe":
       return `El resultado neto representa el ${num(v)} % del patrimonio neto en ${periodo}.`;
 
+    case "roce":
+      return `El resultado operativo representa el ${num(v)} % del capital empleado (patrimonio + deuda financiera) en ${periodo}.`;
+
+    case "roic":
+      return `El resultado operativo representa el ${num(v)} % del capital invertido neto de caja en ${periodo}.`;
+
     case "rotacion_activos":
       return `Por cada $1 de activo total, ${entidad} generó $${num(v)} de ventas netas en ${periodo}.`;
 
@@ -124,8 +132,17 @@ export function explicacionEspecificaNarrativa(
     case "deuda_financiera_sobre_ebitda":
       return `La deuda financiera equivale a ${num(v)} veces el EBITDA del ejercicio en ${periodo}.`;
 
+    case "pasivo_total_sobre_ebitda":
+      return `El pasivo total equivale a ${num(v)} veces el EBITDA del ejercicio en ${periodo}.`;
+
+    case "deuda_neta_sobre_ebitda":
+      return `La deuda neta (deuda financiera menos efectivo) equivale a ${num(v)} veces el EBITDA del ejercicio en ${periodo}.`;
+
     case "margen_flujo_operativo":
       return `El flujo operativo representa el ${num(v)} % de las ventas netas en ${periodo}.`;
+
+    case "free_cash_flow":
+      return `El free cash flow aproximado es de $${num(v)} en ${periodo}.`;
 
     case "flujo_sobre_deuda_financiera":
       return `Por cada $1 de deuda financiera, el flujo operativo del ejercicio fue de $${num(v)} en ${periodo}.`;

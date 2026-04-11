@@ -13,7 +13,8 @@ export function enriquecerExplicaciones(
   const conNotaFlujo = (id: string) =>
     id === "margen_flujo_operativo" ||
     id === "flujo_sobre_deuda_financiera" ||
-    id === "flujo_sobre_pasivo_corriente";
+    id === "flujo_sobre_pasivo_corriente" ||
+    id === "free_cash_flow";
 
   return ratios.map((r) => {
     let explicacionGeneral = "";
@@ -67,6 +68,14 @@ export function enriquecerExplicaciones(
         explicacionGeneral =
           "Retorno sobre patrimonio: rentabilidad para los dueños respecto del capital aportado y retenido. Debe leerse junto con el apalancamiento y el riesgo financiero.";
         break;
+      case "roce":
+        explicacionGeneral =
+          "ROCE (return on capital employed): rentabilidad operativa sobre el capital empleado (patrimonio más deuda financiera en esta aproximación). Complementa el ROA al enfocarse en el capital que financia el negocio.";
+        break;
+      case "roic":
+        explicacionGeneral =
+          "ROIC mide el retorno sobre el capital invertido neto de la caja (aprox.). Aquí se usa resultado operativo sin ajuste por impuestos a la ganancia; conviene contrastar con definiciones del sector que incorporen NOPAT.";
+        break;
       case "rotacion_activos":
         explicacionGeneral =
           "Ventas generadas por cada peso invertido en el activo total. Mayor rotación suele asociarse a modelos de negocio intensivos en volumen o activos más eficientes.";
@@ -103,9 +112,21 @@ export function enriquecerExplicaciones(
         explicacionGeneral =
           "Indica cuántos años de EBITDA (aprox.) equivaldrían a la deuda financiera bruta. Es habitual en análisis de crédito; conviene contrastarlo con el sector y con la estructura de vencimientos.";
         break;
+      case "pasivo_total_sobre_ebitda":
+        explicacionGeneral =
+          "Relaciona todo el pasivo con el EBITDA: una magnitud amplia que incluye proveedores y otras obligaciones, no solo deuda financiera. Sirve como orden de magnitud del apalancamiento global frente a la generación operativa.";
+        break;
+      case "deuda_neta_sobre_ebitda":
+        explicacionGeneral =
+          "Versión neta de la carga de deuda: resta efectivo de la deuda financiera antes de comparar con EBITDA. Valores negativos suelen indicar posición de caja neta.";
+        break;
       case "margen_flujo_operativo":
         explicacionGeneral =
           "Relaciona el efectivo generado por la operación con las ventas. Complementa los márgenes contables al reflejar cobranzas, pagos y working capital de forma más directa.";
+        break;
+      case "free_cash_flow":
+        explicacionGeneral =
+          "Aproxima el efectivo disponible tras la operación y las inversiones en activos (CAPEX informado). No incluye otros usos de caja (dividendos, deuda, capital de trabajo detallado) salvo lo capturado en el flujo operativo.";
         break;
       case "flujo_sobre_deuda_financiera":
         explicacionGeneral =
@@ -121,7 +142,7 @@ export function enriquecerExplicaciones(
         break;
       case "roe_dupont":
         explicacionGeneral =
-          "Reexpresa el ROE como producto de margen neto, rotación de activos y multiplicador de patrimonio. Debe coincidir (salvo redondeos) con el ROE directo y ayuda a ver de dónde viene la rentabilidad del accionista.";
+          "Descompone el ROE en margen neto × rotación de activos × multiplicador de patrimonio (apalancamiento). Debe coincidir (salvo redondeos) con el ROE directo y ayuda a ver si la rentabilidad del accionista viene del margen, de la eficiencia del activo o del leverage.";
         break;
       case "plazo_pago_proveedores":
         explicacionGeneral =

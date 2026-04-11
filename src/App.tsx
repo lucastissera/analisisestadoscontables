@@ -59,6 +59,11 @@ const COLUMNA_PATRIMONIO_Y_RESULTADOS: CampoDef[] = [
     label: "Flujo operativo (opcional)",
     tipo: "numero",
   },
+  {
+    key: "inversionesActivosFijos",
+    label: "Inversiones en activos — CAPEX",
+    tipo: "numero",
+  },
 ];
 
 function fmtValor(r: RatioCalculado): string {

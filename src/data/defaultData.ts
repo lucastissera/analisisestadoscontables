@@ -35,4 +35,5 @@ export const datosPorDefecto: DatosFinancieros = {
 
   amortizacionesYDepreciaciones: 72000,
   flujoEfectivoOperativo: null,
+  inversionesActivosFijos: 65000,
 };

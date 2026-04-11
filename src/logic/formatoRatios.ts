@@ -24,6 +24,12 @@ export function formatearValorRatio(formato: FormatoRatio, valor: number | null)
         maximumFractionDigits: 6,
         useGrouping: opt.useGrouping,
       })} veces`;
+    case "monto":
+      return `$${n.toLocaleString(opt.locale, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+        useGrouping: opt.useGrouping,
+      })}`;
     default:
       return n.toLocaleString(opt.locale, {
         minimumFractionDigits: 2,

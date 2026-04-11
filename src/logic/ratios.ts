@@ -96,6 +96,22 @@ export function calcularRatiosNumericos(d: DatosFinancieros): RatioCalculado[] {
   const provSobreCv = div(d.proveedores, cv);
   const plazoPagoProvDias = provSobreCv !== null ? provSobreCv * 365 : null;
 
+  const capitalEmpleado = pn + df;
+  const roceDec =
+    capitalEmpleado > 0 && Number.isFinite(capitalEmpleado)
+      ? div(resultadoOp, capitalEmpleado)
+      : null;
+  const capitalInvertidoNeto = pn + df - d.efectivoYEquivalentes;
+  const roicDec =
+    capitalInvertidoNeto > 0 && Number.isFinite(capitalInvertidoNeto)
+      ? div(resultadoOp, capitalInvertidoNeto)
+      : null;
+  const pasivoTotalSobreEbitda = div(pt, ebitda);
+  const deudaNeta = df - d.efectivoYEquivalentes;
+  const deudaNetaSobreEbitda = div(deudaNeta, ebitda);
+  const fcf = cfo - d.inversionesActivosFijos;
+  const fcfVal = Number.isFinite(fcf) ? fcf : null;
+
   const out: RatioCalculado[] = [
     ratioBase(
       "liquidez_corriente",
@@ -179,12 +195,12 @@ export function calcularRatiosNumericos(d: DatosFinancieros): RatioCalculado[] {
     ),
     ratioBase(
       "margen_operativo",
-      "Margen operativo",
+      "Margen EBIT / Margen operativo (sobre ventas)",
       "economica",
       "corto",
       "porcentaje",
       margenOp !== null ? margenOp * 100 : null,
-      "Resultado operativo / Ventas netas",
+      "Resultado operativo / Ventas; resultado operativo = Ventas − Costo de ventas − Gastos operativos (aprox. EBIT)",
       ""
     ),
     ratioBase(
@@ -215,6 +231,26 @@ export function calcularRatiosNumericos(d: DatosFinancieros): RatioCalculado[] {
       "porcentaje",
       roe !== null ? roe * 100 : null,
       "Resultado neto / Patrimonio neto",
+      ""
+    ),
+    ratioBase(
+      "roce",
+      "ROCE — Retorno sobre capital empleado",
+      "economica",
+      "largo",
+      "porcentaje",
+      roceDec !== null ? roceDec * 100 : null,
+      "Resultado operativo (aprox. EBIT) / (Patrimonio neto + Deuda financiera CP+LP); capital empleado simplificado",
+      ""
+    ),
+    ratioBase(
+      "roic",
+      "ROIC — Retorno sobre capital invertido",
+      "economica",
+      "largo",
+      "porcentaje",
+      roicDec !== null ? roicDec * 100 : null,
+      "Resultado operativo (aprox. NOPAT sin impuestos) / (Patrimonio + Deuda financiera − Efectivo); capital invertido neto de caja",
       ""
     ),
     ratioBase(
@@ -308,6 +344,26 @@ export function calcularRatiosNumericos(d: DatosFinancieros): RatioCalculado[] {
       ""
     ),
     ratioBase(
+      "pasivo_total_sobre_ebitda",
+      "Pasivo total / EBITDA (años)",
+      "financiera",
+      "largo",
+      "veces",
+      pasivoTotalSobreEbitda,
+      "Pasivo total / EBITDA (aprox. años de EBITDA respecto del pasivo total)",
+      ""
+    ),
+    ratioBase(
+      "deuda_neta_sobre_ebitda",
+      "Deuda neta / EBITDA (años)",
+      "financiera",
+      "largo",
+      "veces",
+      deudaNetaSobreEbitda,
+      "(Deuda financiera CP+LP − Efectivo y equivalentes) / EBITDA; deuda neta puede ser negativa si hay caja neta",
+      ""
+    ),
+    ratioBase(
       "margen_flujo_operativo",
       "Margen de flujo operativo",
       "economica",
@@ -315,6 +371,16 @@ export function calcularRatiosNumericos(d: DatosFinancieros): RatioCalculado[] {
       "porcentaje",
       margenCfo !== null ? margenCfo * 100 : null,
       "Flujo operativo / Ventas netas (flujo declarado o estimado RN + amortizaciones)",
+      ""
+    ),
+    ratioBase(
+      "free_cash_flow",
+      "Free cash flow (aprox.)",
+      "economica",
+      "largo",
+      "monto",
+      fcfVal,
+      "Flujo operativo − Inversiones en activos (CAPEX informado en datos)",
       ""
     ),
     ratioBase(
@@ -349,12 +415,12 @@ export function calcularRatiosNumericos(d: DatosFinancieros): RatioCalculado[] {
     ),
     ratioBase(
       "roe_dupont",
-      "ROE vía DuPont (producto)",
+      "ROE vía DuPont — Margen neto × Rotación de activos × Multiplicador de patrimonio",
       "economica",
       "largo",
       "porcentaje",
       roeDupontPct,
-      "(Resultado neto / Ventas) × (Ventas / Activo) × (Activo / Patrimonio)",
+      "(Resultado neto / Ventas) × (Ventas / Activo total) × (Activo total / Patrimonio neto)",
       ""
     ),
     ratioBase(

@@ -30,6 +30,7 @@ const ALIAS: Record<string, keyof DatosFinancieros> = {
   resultadoNeto: "resultadoNeto",
   amortizacionesYDepreciaciones: "amortizacionesYDepreciaciones",
   flujoEfectivoOperativo: "flujoEfectivoOperativo",
+  inversionesActivosFijos: "inversionesActivosFijos",
 };
 
 const ALIAS_ESP: Record<string, keyof DatosFinancieros> = {
@@ -83,6 +84,8 @@ const ALIAS_ESP: Record<string, keyof DatosFinancieros> = {
   "flujo de efectivo operativo": "flujoEfectivoOperativo",
   "cff operativo": "flujoEfectivoOperativo",
   "flujo operativo (opcional)": "flujoEfectivoOperativo",
+  "inversiones en activos fijos": "inversionesActivosFijos",
+  capex: "inversionesActivosFijos",
 };
 
 function normalizarClave(raw: unknown): keyof DatosFinancieros | null {
@@ -168,10 +171,16 @@ function numFmtValorRatio(r: RatioCalculado): string {
     case "dias":
       return '0.00" días"';
     case "veces":
-      if (r.id === "deuda_financiera_sobre_ebitda") {
+      if (
+        r.id === "deuda_financiera_sobre_ebitda" ||
+        r.id === "pasivo_total_sobre_ebitda" ||
+        r.id === "deuda_neta_sobre_ebitda"
+      ) {
         return '0.00" años"';
       }
       return '0.00" veces"';
+    case "monto":
+      return "_-* #,##0.00_-;\\-* #,##0.00_-;_-* \"-\"??_-;_-@_-";
     case "indice":
       if (r.id === "capital_trabajo") {
         return '$#,##0.00" (importe)"';
@@ -300,6 +309,7 @@ export function exportarDatosAXlsx(d: DatosFinancieros): ArrayBuffer {
     resultadoNeto: "Resultado neto",
     amortizacionesYDepreciaciones: "Amortizaciones y depreciaciones",
     flujoEfectivoOperativo: "Flujo operativo (opcional)",
+    inversionesActivosFijos: "Inversiones en activos (CAPEX)",
   };
 
   const filas: (string | number)[][] = [
@@ -353,6 +363,7 @@ export function exportarPlantillaVacia(): ArrayBuffer {
     resultadoNeto: 0,
     amortizacionesYDepreciaciones: 0,
     flujoEfectivoOperativo: null,
+    inversionesActivosFijos: 0,
   };
   return exportarDatosAXlsx(vacio);
 }

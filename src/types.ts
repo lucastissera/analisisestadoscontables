@@ -43,9 +43,14 @@ export interface DatosFinancieros {
    * `null` o celda vacía en Excel: se estima como resultado neto + amortizaciones y depreciaciones.
    */
   flujoEfectivoOperativo: number | null;
+  /**
+   * Inversiones en activos fijos (CAPEX) del período, para aproximar free cash flow
+   * (flujo operativo − CAPEX). Usar 0 si no hay compras de activos relevantes.
+   */
+  inversionesActivosFijos: number;
 }
 
-export type FormatoRatio = "indice" | "porcentaje" | "veces" | "dias";
+export type FormatoRatio = "indice" | "porcentaje" | "veces" | "dias" | "monto";
 
 export interface RatioCalculado {
   id: string;
@@ -91,4 +96,5 @@ export const CAMPOS_IMPORT_EXCEL = [
   "resultadoNeto",
   "amortizacionesYDepreciaciones",
   "flujoEfectivoOperativo",
+  "inversionesActivosFijos",
 ] as const satisfies readonly (keyof DatosFinancieros)[];
