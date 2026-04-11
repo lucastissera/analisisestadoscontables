@@ -413,13 +413,13 @@ export function exportarRatiosAXlsx(
     ["Razón social", d.razonSocial],
     ["Período", d.periodo],
     [],
-    ["Ratio", "Situación", "Plazo", "Valor", "Interpretación"],
+    ["Ratio", "Situación", "Plazo", "Valor", "Interpretación (empresa)"],
     ...ratios.map((r) => [
       r.nombre,
       r.situacion === "economica" ? "Económica" : "Financiera",
       r.plazo === "corto" ? "Corto plazo" : "Largo plazo",
       valorCeldaParaExcel(r),
-      r.explicacion,
+      r.explicacionEspecifica,
     ]),
   ];
 
@@ -429,12 +429,14 @@ export function exportarRatiosAXlsx(
   const maxColsAnalisis = [120, 26, 26, 28, 110];
   ws["!cols"] = anchosColumnasLibres(filasAnalisis, 5, maxColsAnalisis);
 
-  const filasFormulas: (string | number)[][] =
-    ratios.length > 0
-      ? ratios.map((r) => [r.nombre, r.formula])
-      : [["", ""]];
+  const filasFormulas: (string | number)[][] = [
+    ["Ratio", "Fórmula", "Interpretación general"],
+    ...(ratios.length > 0
+      ? ratios.map((r) => [r.nombre, r.formula, r.explicacionGeneral])
+      : [["", "", ""]]),
+  ];
   const wsForm = XLSX.utils.aoa_to_sheet(filasFormulas);
-  wsForm["!cols"] = anchosColumnasLibres(filasFormulas, 2, [100, 120]);
+  wsForm["!cols"] = anchosColumnasLibres(filasFormulas, 3, [100, 120, 110]);
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Análisis");

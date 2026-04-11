@@ -24,7 +24,18 @@ function ratioBase(
   formula: string,
   explicacion: string
 ): RatioCalculado {
-  return { id, nombre, situacion, plazo, formato, valor, formula, explicacion };
+  return {
+    id,
+    nombre,
+    situacion,
+    plazo,
+    formato,
+    valor,
+    formula,
+    explicacion,
+    explicacionGeneral: "",
+    explicacionEspecifica: "",
+  };
 }
 
 /** Cálculo numérico sin textos personalizados */

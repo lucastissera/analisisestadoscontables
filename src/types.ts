@@ -55,7 +55,12 @@ export interface RatioCalculado {
   formato: FormatoRatio;
   valor: number | null;
   formula: string;
+  /** Texto completo (general + específico); usado en pantalla y PDF. */
   explicacion: string;
+  /** Qué mide el ratio en abstracto, sin referencia a la empresa ni al valor obtenido. */
+  explicacionGeneral: string;
+  /** Lectura para la empresa y período analizados, con el resultado numérico. */
+  explicacionEspecifica: string;
 }
 
 export const CAMPOS_IMPORT_EXCEL = [
