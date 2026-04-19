@@ -20,10 +20,10 @@ function pctVariacion(ant: number | null, act: number | null): number | null {
   return ((act - ant) / ant) * 100;
 }
 
-function textoPct(p: number | null, dec = 1): string {
+function textoPct(p: number | null): string {
   if (p === null || !Number.isFinite(p)) return "N/D";
   const s = p >= 0 ? "+" : "";
-  return `${s}${p.toFixed(dec)} %`;
+  return `${s}${p.toFixed(2)} %`;
 }
 
 function variacionRelativaCampo(
@@ -65,7 +65,7 @@ function resumenVariacionRatio(
     default:
       return `Variación absoluta ${diff >= 0 ? "+" : ""}${diff.toLocaleString("es-AR", {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 4,
+        maximumFractionDigits: 2,
       })}; relativa ${textoPct(pct)}.`;
   }
 }
@@ -77,7 +77,7 @@ function lineaDriver(
   if (pct === null || !Number.isFinite(pct)) return null;
   const dir = pct > 0.5 ? "subió" : pct < -0.5 ? "bajó" : "se mantuvo estable";
   if (dir === "se mantuvo estable") return `${etiqueta} se mantuvo similar al ejercicio anterior.`;
-  return `${etiqueta} ${dir} aproximadamente un ${Math.abs(pct).toFixed(1)} % interanual.`;
+  return `${etiqueta} ${dir} aproximadamente un ${Math.abs(pct).toFixed(2)} % interanual.`;
 }
 
 function analisisPorId(

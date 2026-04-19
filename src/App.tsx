@@ -10,7 +10,13 @@ import {
 import { generarFilasComparativa } from "./logic/comparativaRatios";
 import { generarPdfAnalisis, generarPdfComparativa } from "./logic/pdfExport";
 import { formatearValorRatio } from "./logic/formatoRatios";
-import { montoAStringEdicion, parseMontoIngreso } from "./logic/numerosFormulario";
+import {
+  montoAStringEdicion,
+  montoAStringEdicionDecimales,
+  parseMontoIngreso,
+  redondearDatosFinancieros,
+  redondearDecimales,
+} from "./logic/numerosFormulario";
 import { calcularRatios } from "./logic/ratios";
 import type { DatosFinancieros, RatioCalculado } from "./types";
 
@@ -140,6 +146,9 @@ const datosEjemploAnterior: DatosFinancieros = {
   periodo: "2024",
 };
 
+/** Decimales para montos en formularios y coherencia con ratios (pantalla y exportes). */
+const DECIMALES_MONTOS = 2;
+
 type PanelDatosProps = {
   titulo: string;
   datos: DatosFinancieros;
@@ -148,9 +157,30 @@ type PanelDatosProps = {
   setBorrador: React.Dispatch<
     React.SetStateAction<Partial<Record<keyof DatosFinancieros, string>>>
   >;
+  /** Si se define, los montos se muestran con esa cantidad de decimales y se redondean al salir del campo. */
+  decimalesMontos?: number;
 };
 
-function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }: PanelDatosProps) {
+function PanelDatosContables({
+  titulo,
+  datos,
+  setDatos,
+  borrador,
+  setBorrador,
+  decimalesMontos,
+}: PanelDatosProps) {
+  function fmtMonto(n: number): string {
+    return decimalesMontos !== undefined
+      ? montoAStringEdicionDecimales(n, decimalesMontos)
+      : montoAStringEdicion(n);
+  }
+
+  function aplicarMontoIngresado(raw: string): number {
+    let n = parseMontoIngreso(raw);
+    if (decimalesMontos !== undefined) n = redondearDecimales(n, decimalesMontos);
+    return n;
+  }
+
   function actualizar<K extends keyof DatosFinancieros>(key: K, value: DatosFinancieros[K]) {
     setDatos((d) => ({ ...d, [key]: value }));
   }
@@ -176,7 +206,7 @@ function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }:
                 ? borrador.flujoEfectivoOperativo
                 : datos.flujoEfectivoOperativo === null
                   ? ""
-                  : montoAStringEdicion(datos.flujoEfectivoOperativo)
+                  : fmtMonto(datos.flujoEfectivoOperativo)
             }
             onFocus={() => {
               setBorrador((m) => ({
@@ -184,7 +214,7 @@ function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }:
                 flujoEfectivoOperativo:
                   datos.flujoEfectivoOperativo === null
                     ? ""
-                    : montoAStringEdicion(datos.flujoEfectivoOperativo),
+                    : fmtMonto(datos.flujoEfectivoOperativo),
               }));
             }}
             onChange={(e) => {
@@ -203,7 +233,7 @@ function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }:
               if (raw === "") {
                 actualizar("flujoEfectivoOperativo", null);
               } else {
-                const n = parseMontoIngreso(raw);
+                const n = aplicarMontoIngresado(raw);
                 actualizar("flujoEfectivoOperativo", Number.isFinite(n) ? n : null);
               }
             }}
@@ -214,12 +244,12 @@ function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }:
             inputMode="decimal"
             autoComplete="off"
             value={
-              borrador[key] !== undefined ? borrador[key]! : montoAStringEdicion(datos[key] as number)
+              borrador[key] !== undefined ? borrador[key]! : fmtMonto(datos[key] as number)
             }
             onFocus={() => {
               setBorrador((m) => ({
                 ...m,
-                [key]: montoAStringEdicion(datos[key] as number),
+                [key]: fmtMonto(datos[key] as number),
               }));
             }}
             onChange={(e) => {
@@ -232,7 +262,7 @@ function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }:
                 delete n[key];
                 return n;
               });
-              actualizar(key, parseMontoIngreso(raw) as DatosFinancieros[typeof key]);
+              actualizar(key, aplicarMontoIngresado(raw) as DatosFinancieros[typeof key]);
             }}
           />
         )}
@@ -246,6 +276,9 @@ function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }:
       <p className="form-montos-hint">
         Montos con decimales: punto o coma como separador; si usás coma, los puntos se interpretan como miles
         (ej. 1.234,56).
+        {decimalesMontos !== undefined && (
+          <> En este bloque los importes numéricos se muestran y guardan con {decimalesMontos} decimales.</>
+        )}
       </p>
       <div className="form-identificacion">{CAMPOS_IDENTIFICACION.map(campoInput)}</div>
       <div className="form-tres-columnas">
@@ -308,8 +341,12 @@ function BloqueRatios({ titulo, porGrupo }: BloqueRatiosProps) {
 }
 
 export default function App() {
-  const [datosActual, setDatosActual] = useState<DatosFinancieros>({ ...datosPorDefecto });
-  const [datosAnterior, setDatosAnterior] = useState<DatosFinancieros>({ ...datosEjemploAnterior });
+  const [datosActual, setDatosActual] = useState<DatosFinancieros>(() =>
+    redondearDatosFinancieros({ ...datosPorDefecto }, DECIMALES_MONTOS)
+  );
+  const [datosAnterior, setDatosAnterior] = useState<DatosFinancieros>(() =>
+    redondearDatosFinancieros({ ...datosEjemploAnterior }, DECIMALES_MONTOS)
+  );
   const [dosEjercicios, setDosEjercicios] = useState(false);
 
   const [montosBorrador, setMontosBorrador] = useState<{
@@ -365,10 +402,12 @@ export default function App() {
       const buf = await f.arrayBuffer();
       const parcial = importarDesdeArchivo(buf);
       if (ej === "actual") {
-        setDatosActual((prev) => ({ ...prev, ...parcial }));
+        setDatosActual((prev) => redondearDatosFinancieros({ ...prev, ...parcial }, DECIMALES_MONTOS));
         setMontosBorrador((m) => ({ ...m, actual: {} }));
       } else {
-        setDatosAnterior((prev) => ({ ...prev, ...parcial }));
+        setDatosAnterior((prev) =>
+          redondearDatosFinancieros({ ...prev, ...parcial }, DECIMALES_MONTOS)
+        );
         setMontosBorrador((m) => ({ ...m, anterior: {} }));
       }
     } catch {
@@ -420,8 +459,8 @@ export default function App() {
   }
 
   function restaurarEjemplos() {
-    setDatosActual({ ...datosPorDefecto });
-    setDatosAnterior({ ...datosEjemploAnterior });
+    setDatosActual(redondearDatosFinancieros({ ...datosPorDefecto }, DECIMALES_MONTOS));
+    setDatosAnterior(redondearDatosFinancieros({ ...datosEjemploAnterior }, DECIMALES_MONTOS));
     setMontosBorrador({ actual: {}, anterior: {} });
   }
 
@@ -460,7 +499,8 @@ export default function App() {
 
   function activarEjercicioAnterior() {
     setDosEjercicios(true);
-    setDatosAnterior({ ...datosEjemploAnterior });
+    setDatosActual((d) => redondearDatosFinancieros(d, DECIMALES_MONTOS));
+    setDatosAnterior(redondearDatosFinancieros({ ...datosEjemploAnterior }, DECIMALES_MONTOS));
     setMontosBorrador((m) => ({ ...m, anterior: {} }));
     setError("anterior", null);
   }
@@ -543,7 +583,7 @@ export default function App() {
               type="button"
               className="secondary"
               onClick={() => {
-                setDatosActual({ ...datosPorDefecto });
+                setDatosActual(redondearDatosFinancieros({ ...datosPorDefecto }, DECIMALES_MONTOS));
                 setMontosBorrador((m) => ({ ...m, actual: {} }));
               }}
             >
@@ -580,30 +620,6 @@ export default function App() {
 
           <div className="toolbar-doble">
             <div className="toolbar-periodo">
-              <h3 className="toolbar-periodo-titulo">Ejercicio actual</h3>
-              <div className="toolbar">
-                <label className="file-btn">
-                  Importar Excel
-                  <input
-                    ref={fileRefActual}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={(e) => onArchivo("actual", e)}
-                  />
-                </label>
-                <button type="button" onClick={() => exportXlsxDatos(datosActual, "actual")}>
-                  Exportar datos (.xlsx)
-                </button>
-                <button type="button" onClick={() => exportXlsxAnalisis(datosActual, ratiosActual, "actual")}>
-                  Exportar análisis (.xlsx)
-                </button>
-                <button type="button" onClick={() => exportPdf(datosActual, ratiosActual, "actual")}>
-                  Exportar informe (.pdf)
-                </button>
-              </div>
-              {errorImport.actual && <div className="error-msg">{errorImport.actual}</div>}
-            </div>
-            <div className="toolbar-periodo">
               <h3 className="toolbar-periodo-titulo">Ejercicio anterior</h3>
               <div className="toolbar">
                 <label className="file-btn">
@@ -630,6 +646,30 @@ export default function App() {
               </div>
               {errorImport.anterior && <div className="error-msg">{errorImport.anterior}</div>}
             </div>
+            <div className="toolbar-periodo">
+              <h3 className="toolbar-periodo-titulo">Ejercicio actual</h3>
+              <div className="toolbar">
+                <label className="file-btn">
+                  Importar Excel
+                  <input
+                    ref={fileRefActual}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => onArchivo("actual", e)}
+                  />
+                </label>
+                <button type="button" onClick={() => exportXlsxDatos(datosActual, "actual")}>
+                  Exportar datos (.xlsx)
+                </button>
+                <button type="button" onClick={() => exportXlsxAnalisis(datosActual, ratiosActual, "actual")}>
+                  Exportar análisis (.xlsx)
+                </button>
+                <button type="button" onClick={() => exportPdf(datosActual, ratiosActual, "actual")}>
+                  Exportar informe (.pdf)
+                </button>
+              </div>
+              {errorImport.actual && <div className="error-msg">{errorImport.actual}</div>}
+            </div>
           </div>
         </>
       )}
@@ -647,24 +687,13 @@ export default function App() {
                 actual: typeof action === "function" ? action(m.actual) : action,
               }))
             }
+            decimalesMontos={DECIMALES_MONTOS}
           />
           <BloqueRatios titulo="Ratios e interpretación" porGrupo={porGrupoActual} />
         </>
       ) : (
         <>
           <div className="dos-columnas-form">
-            <PanelDatosContables
-              titulo="Datos contables — ejercicio actual"
-              datos={datosActual}
-              setDatos={setDatosActual}
-              borrador={montosBorrador.actual}
-              setBorrador={(action) =>
-                setMontosBorrador((m) => ({
-                  ...m,
-                  actual: typeof action === "function" ? action(m.actual) : action,
-                }))
-              }
-            />
             <PanelDatosContables
               titulo="Datos contables — ejercicio anterior"
               datos={datosAnterior}
@@ -676,15 +705,32 @@ export default function App() {
                   anterior: typeof action === "function" ? action(m.anterior) : action,
                 }))
               }
+              decimalesMontos={DECIMALES_MONTOS}
+            />
+            <PanelDatosContables
+              titulo="Datos contables — ejercicio actual"
+              datos={datosActual}
+              setDatos={setDatosActual}
+              borrador={montosBorrador.actual}
+              setBorrador={(action) =>
+                setMontosBorrador((m) => ({
+                  ...m,
+                  actual: typeof action === "function" ? action(m.actual) : action,
+                }))
+              }
+              decimalesMontos={DECIMALES_MONTOS}
             />
           </div>
-          <BloqueRatios titulo="Ratios e interpretación — ejercicio actual" porGrupo={porGrupoActual} />
-          <BloqueRatios titulo="Ratios e interpretación — ejercicio anterior" porGrupo={porGrupoAnterior} />
+          <div className="dos-columnas-ratios">
+            <BloqueRatios titulo="Ratios e interpretación — ejercicio anterior" porGrupo={porGrupoAnterior} />
+            <BloqueRatios titulo="Ratios e interpretación — ejercicio actual" porGrupo={porGrupoActual} />
+          </div>
           <div className="panel panel-comparativo">
             <h2>Análisis comparativo (ejercicio anterior → actual)</h2>
             <p className="form-montos-hint">
               Comparación ratio a ratio con variación y causas probables según la evolución de partidas entre
-              períodos. Exportá el detalle completo con &quot;Exportar comparativo&quot; arriba.
+              períodos. A la izquierda el ejercicio anterior y a la derecha el actual. Exportá el detalle con
+              &quot;Exportar comparativo&quot; arriba.
             </p>
             {filasComparativa.map((f) => (
               <article key={f.id} className="ratio-card ratio-card-comparativo">
@@ -696,12 +742,20 @@ export default function App() {
                   <span className="pill corto">{f.plazoLabel}</span>
                 </header>
                 <div className="comparativo-valores">
-                  <span>
-                    <strong>Anterior:</strong> {f.valorAnterior}
-                  </span>
-                  <span>
-                    <strong>Actual:</strong> {f.valorActual}
-                  </span>
+                  <div className="comparativo-valor-celda comparativo-valor-izq">
+                    <span className="comparativo-valor-etiq">
+                      Ejercicio anterior
+                      {datosAnterior.periodo ? ` (${datosAnterior.periodo})` : ""}
+                    </span>
+                    <span className="comparativo-valor-num">{f.valorAnterior}</span>
+                  </div>
+                  <div className="comparativo-valor-celda comparativo-valor-der">
+                    <span className="comparativo-valor-etiq">
+                      Ejercicio actual
+                      {datosActual.periodo ? ` (${datosActual.periodo})` : ""}
+                    </span>
+                    <span className="comparativo-valor-num">{f.valorActual}</span>
+                  </div>
                 </div>
                 <p className="comparativo-var">{f.variacionResumen}</p>
                 <p className="interpret">{f.analisisCausas}</p>

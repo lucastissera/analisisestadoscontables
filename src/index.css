@@ -437,8 +437,24 @@ input[type="file"] {
   align-items: start;
 }
 
+.dos-columnas-ratios {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.dos-columnas-ratios > .panel {
+  margin-bottom: 0;
+}
+
 @media (max-width: 1100px) {
   .dos-columnas-form {
+    grid-template-columns: 1fr;
+  }
+
+  .dos-columnas-ratios {
     grid-template-columns: 1fr;
   }
 }
@@ -448,12 +464,42 @@ input[type="file"] {
 }
 
 .ratio-card-comparativo .comparativo-valores {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.75rem 1.25rem;
   font-size: 0.82rem;
   color: var(--muted);
   margin-bottom: 0.35rem;
+  align-items: start;
+}
+
+.ratio-card-comparativo .comparativo-valor-celda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.ratio-card-comparativo .comparativo-valor-izq {
+  text-align: left;
+}
+
+.ratio-card-comparativo .comparativo-valor-der {
+  text-align: right;
+}
+
+.ratio-card-comparativo .comparativo-valor-etiq {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.ratio-card-comparativo .comparativo-valor-num {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.95rem;
+  color: var(--accent);
 }
 
 .ratio-card-comparativo .comparativo-var {
