@@ -1,12 +1,14 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { datosPorDefecto } from "./data/defaultData";
 import {
+  exportarComparativaAXlsx,
   exportarDatosAXlsx,
   exportarPlantillaVacia,
   exportarRatiosAXlsx,
   importarDesdeArchivo,
 } from "./logic/excelIO";
-import { generarPdfAnalisis } from "./logic/pdfExport";
+import { generarFilasComparativa } from "./logic/comparativaRatios";
+import { generarPdfAnalisis, generarPdfComparativa } from "./logic/pdfExport";
 import { formatearValorRatio } from "./logic/formatoRatios";
 import { montoAStringEdicion, parseMontoIngreso } from "./logic/numerosFormulario";
 import { calcularRatios } from "./logic/ratios";
@@ -131,100 +133,26 @@ function IconLuna() {
   );
 }
 
-export default function App() {
-  const [datos, setDatos] = useState<DatosFinancieros>({ ...datosPorDefecto });
-  /** Texto libre mientras el input tiene foco (permite tipear "12." sin que se borre el punto). */
-  const [montosBorrador, setMontosBorrador] = useState<
-    Partial<Record<keyof DatosFinancieros, string>>
-  >({});
-  const [errorImport, setErrorImport] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [tema, setTema] = useState<Tema>(leerTemaGuardado);
+type EjercicioId = "actual" | "anterior";
 
-  useLayoutEffect(() => {
-    document.documentElement.setAttribute("data-theme", tema);
-    try {
-      localStorage.setItem("theme", tema);
-    } catch {
-      /* ignore */
-    }
-  }, [tema]);
+const datosEjemploAnterior: DatosFinancieros = {
+  ...datosPorDefecto,
+  periodo: "2024",
+};
 
-  const ratios = useMemo(() => calcularRatios(datos), [datos]);
+type PanelDatosProps = {
+  titulo: string;
+  datos: DatosFinancieros;
+  setDatos: React.Dispatch<React.SetStateAction<DatosFinancieros>>;
+  borrador: Partial<Record<keyof DatosFinancieros, string>>;
+  setBorrador: React.Dispatch<
+    React.SetStateAction<Partial<Record<keyof DatosFinancieros, string>>>
+  >;
+};
 
-  const porGrupo = useMemo(() => {
-    const clave = (s: RatioCalculado["situacion"], p: RatioCalculado["plazo"]) => `${s}-${p}`;
-    const map = new Map<string, RatioCalculado[]>();
-    for (const r of ratios) {
-      const k = clave(r.situacion, r.plazo);
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(r);
-    }
-    const orden: [RatioCalculado["situacion"], RatioCalculado["plazo"]][] = [
-      ["economica", "corto"],
-      ["economica", "largo"],
-      ["financiera", "corto"],
-      ["financiera", "largo"],
-    ];
-    return orden.map(([s, p]) => ({
-      situacion: s,
-      plazo: p,
-      titulo: grupoTitulo(s, p),
-      items: map.get(clave(s, p)) ?? [],
-    }));
-  }, [ratios]);
-
+function PanelDatosContables({ titulo, datos, setDatos, borrador, setBorrador }: PanelDatosProps) {
   function actualizar<K extends keyof DatosFinancieros>(key: K, value: DatosFinancieros[K]) {
     setDatos((d) => ({ ...d, [key]: value }));
-  }
-
-  async function onArchivo(e: React.ChangeEvent<HTMLInputElement>) {
-    setErrorImport(null);
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
-    try {
-      const buf = await f.arrayBuffer();
-      const parcial = importarDesdeArchivo(buf);
-      setDatos((prev) => ({ ...prev, ...parcial }));
-      setMontosBorrador({});
-    } catch {
-      setErrorImport(
-        "No se pudo leer el archivo. Usá .xlsx o .xls: columna A = concepto, columna B = valor (una fila por dato). Podés descargar la plantilla."
-      );
-    }
-  }
-
-  function exportXlsxDatos() {
-    const buf = exportarDatosAXlsx(datos);
-    const safe = (datos.razonSocial || "empresa").replace(/[^\w\-]+/g, "_").slice(0, 40);
-    descargarBuffer(buf, `datos_${safe}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-  }
-
-  function exportXlsxAnalisis() {
-    const buf = exportarRatiosAXlsx(datos, ratios);
-    const safe = (datos.razonSocial || "empresa").replace(/[^\w\-]+/g, "_").slice(0, 40);
-    descargarBuffer(
-      buf,
-      `analisis_ratios_${safe}.xlsx`,
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-  }
-
-  function exportPdf() {
-    const blob = generarPdfAnalisis(datos, ratios);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const safe = (datos.razonSocial || "empresa").replace(/[^\w\-]+/g, "_").slice(0, 40);
-    a.download = `analisis_${safe}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function plantilla() {
-    const buf = exportarPlantillaVacia();
-    descargarBuffer(buf, "plantilla_balance_analisis.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   }
 
   function campoInput({ key, label, tipo }: CampoDef) {
@@ -244,14 +172,14 @@ export default function App() {
             autoComplete="off"
             placeholder="Vacío: RN + amortizaciones"
             value={
-              montosBorrador.flujoEfectivoOperativo !== undefined
-                ? montosBorrador.flujoEfectivoOperativo
+              borrador.flujoEfectivoOperativo !== undefined
+                ? borrador.flujoEfectivoOperativo
                 : datos.flujoEfectivoOperativo === null
                   ? ""
                   : montoAStringEdicion(datos.flujoEfectivoOperativo)
             }
             onFocus={() => {
-              setMontosBorrador((m) => ({
+              setBorrador((m) => ({
                 ...m,
                 flujoEfectivoOperativo:
                   datos.flujoEfectivoOperativo === null
@@ -260,14 +188,14 @@ export default function App() {
               }));
             }}
             onChange={(e) => {
-              setMontosBorrador((m) => ({
+              setBorrador((m) => ({
                 ...m,
                 flujoEfectivoOperativo: e.target.value,
               }));
             }}
             onBlur={(e) => {
               const raw = e.target.value.trim();
-              setMontosBorrador((m) => {
+              setBorrador((m) => {
                 const n = { ...m };
                 delete n.flujoEfectivoOperativo;
                 return n;
@@ -286,35 +214,255 @@ export default function App() {
             inputMode="decimal"
             autoComplete="off"
             value={
-              montosBorrador[key] !== undefined
-                ? montosBorrador[key]!
-                : montoAStringEdicion(datos[key] as number)
+              borrador[key] !== undefined ? borrador[key]! : montoAStringEdicion(datos[key] as number)
             }
             onFocus={() => {
-              setMontosBorrador((m) => ({
+              setBorrador((m) => ({
                 ...m,
                 [key]: montoAStringEdicion(datos[key] as number),
               }));
             }}
             onChange={(e) => {
-              setMontosBorrador((m) => ({ ...m, [key]: e.target.value }));
+              setBorrador((m) => ({ ...m, [key]: e.target.value }));
             }}
             onBlur={(e) => {
               const raw = e.target.value;
-              setMontosBorrador((m) => {
+              setBorrador((m) => {
                 const n = { ...m };
                 delete n[key];
                 return n;
               });
-              actualizar(
-                key,
-                parseMontoIngreso(raw) as DatosFinancieros[typeof key]
-              );
+              actualizar(key, parseMontoIngreso(raw) as DatosFinancieros[typeof key]);
             }}
           />
         )}
       </label>
     );
+  }
+
+  return (
+    <div className="panel">
+      <h2>{titulo}</h2>
+      <p className="form-montos-hint">
+        Montos con decimales: punto o coma como separador; si usás coma, los puntos se interpretan como miles
+        (ej. 1.234,56).
+      </p>
+      <div className="form-identificacion">{CAMPOS_IDENTIFICACION.map(campoInput)}</div>
+      <div className="form-tres-columnas">
+        <div className="form-columna">
+          <h3 className="form-columna-titulo">Activo</h3>
+          <div className="form-columna-campos">{COLUMNA_ACTIVO.map(campoInput)}</div>
+        </div>
+        <div className="form-columna">
+          <h3 className="form-columna-titulo">Pasivo</h3>
+          <div className="form-columna-campos">{COLUMNA_PASIVO.map(campoInput)}</div>
+        </div>
+        <div className="form-columna">
+          <h3 className="form-columna-titulo">Patrimonio neto y resultados</h3>
+          <div className="form-columna-campos">{COLUMNA_PATRIMONIO_Y_RESULTADOS.map(campoInput)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type BloqueRatiosProps = {
+  titulo: string;
+  porGrupo: {
+    titulo: string;
+    items: RatioCalculado[];
+  }[];
+};
+
+function BloqueRatios({ titulo, porGrupo }: BloqueRatiosProps) {
+  return (
+    <div className="panel">
+      <h2>{titulo}</h2>
+      {porGrupo.map(({ titulo: t, items }) => (
+        <div key={t} className="section-block">
+          <h2>{t}</h2>
+          {items.length === 0 ? (
+            <p className="subtitle" style={{ marginBottom: 0 }}>
+              Sin ratios en este bloque.
+            </p>
+          ) : (
+            items.map((r) => (
+              <article key={r.id} className="ratio-card">
+                <header>
+                  <span className="title">{r.nombre}</span>
+                  <span className="valor">{fmtValor(r)}</span>
+                  <span className={`pill ${r.situacion === "financiera" ? "fin" : "eco"}`}>
+                    {r.situacion === "financiera" ? "Financiera" : "Económica"}
+                  </span>
+                  <span className="pill corto">{r.plazo === "corto" ? "Corto plazo" : "Largo plazo"}</span>
+                </header>
+                <div className="formula">{r.formula}</div>
+                <p className="interpret">{r.explicacion}</p>
+              </article>
+            ))
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function App() {
+  const [datosActual, setDatosActual] = useState<DatosFinancieros>({ ...datosPorDefecto });
+  const [datosAnterior, setDatosAnterior] = useState<DatosFinancieros>({ ...datosEjemploAnterior });
+  const [dosEjercicios, setDosEjercicios] = useState(false);
+
+  const [montosBorrador, setMontosBorrador] = useState<{
+    actual: Partial<Record<keyof DatosFinancieros, string>>;
+    anterior: Partial<Record<keyof DatosFinancieros, string>>;
+  }>({ actual: {}, anterior: {} });
+
+  const [errorImport, setErrorImport] = useState<{ actual: string | null; anterior: string | null }>({
+    actual: null,
+    anterior: null,
+  });
+
+  const fileRefActual = useRef<HTMLInputElement>(null);
+  const fileRefAnterior = useRef<HTMLInputElement>(null);
+  const [tema, setTema] = useState<Tema>(leerTemaGuardado);
+
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-theme", tema);
+    try {
+      localStorage.setItem("theme", tema);
+    } catch {
+      /* ignore */
+    }
+  }, [tema]);
+
+  const ratiosActual = useMemo(() => calcularRatios(datosActual), [datosActual]);
+  const ratiosAnterior = useMemo(() => calcularRatios(datosAnterior), [datosAnterior]);
+
+  const porGrupoActual = useMemo(
+    () => agruparRatiosPorSeccion(ratiosActual),
+    [ratiosActual]
+  );
+  const porGrupoAnterior = useMemo(
+    () => agruparRatiosPorSeccion(ratiosAnterior),
+    [ratiosAnterior]
+  );
+
+  const filasComparativa = useMemo(
+    () => generarFilasComparativa(ratiosAnterior, ratiosActual, datosAnterior, datosActual),
+    [ratiosAnterior, ratiosActual, datosAnterior, datosActual]
+  );
+
+  function setError(ej: EjercicioId, msg: string | null) {
+    setErrorImport((e) => ({ ...e, [ej]: msg }));
+  }
+
+  async function onArchivo(ej: EjercicioId, e: React.ChangeEvent<HTMLInputElement>) {
+    setError(ej, null);
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const buf = await f.arrayBuffer();
+      const parcial = importarDesdeArchivo(buf);
+      if (ej === "actual") {
+        setDatosActual((prev) => ({ ...prev, ...parcial }));
+        setMontosBorrador((m) => ({ ...m, actual: {} }));
+      } else {
+        setDatosAnterior((prev) => ({ ...prev, ...parcial }));
+        setMontosBorrador((m) => ({ ...m, anterior: {} }));
+      }
+    } catch {
+      setError(
+        ej,
+        "No se pudo leer el archivo. Usá .xlsx o .xls: columna A = concepto, columna B = valor (una fila por dato). Podés descargar la plantilla."
+      );
+    }
+  }
+
+  function exportXlsxDatos(d: DatosFinancieros, sufijo: string) {
+    const buf = exportarDatosAXlsx(d);
+    const safe = (d.razonSocial || "empresa").replace(/[^\w\-]+/g, "_").slice(0, 40);
+    descargarBuffer(
+      buf,
+      `datos_${sufijo}_${safe}.xlsx`,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  }
+
+  function exportXlsxAnalisis(d: DatosFinancieros, ratios: RatioCalculado[], sufijo: string) {
+    const buf = exportarRatiosAXlsx(d, ratios);
+    const safe = (d.razonSocial || "empresa").replace(/[^\w\-]+/g, "_").slice(0, 40);
+    descargarBuffer(
+      buf,
+      `analisis_ratios_${sufijo}_${safe}.xlsx`,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  }
+
+  function exportPdf(d: DatosFinancieros, ratios: RatioCalculado[], sufijo: string) {
+    const blob = generarPdfAnalisis(d, ratios);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safe = (d.razonSocial || "empresa").replace(/[^\w\-]+/g, "_").slice(0, 40);
+    a.download = `analisis_${sufijo}_${safe}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function plantilla() {
+    const buf = exportarPlantillaVacia();
+    descargarBuffer(
+      buf,
+      "plantilla_balance_analisis.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  }
+
+  function restaurarEjemplos() {
+    setDatosActual({ ...datosPorDefecto });
+    setDatosAnterior({ ...datosEjemploAnterior });
+    setMontosBorrador({ actual: {}, anterior: {} });
+  }
+
+  function exportComparativoXlsx() {
+    const empresa = datosActual.razonSocial || datosAnterior.razonSocial || "empresa";
+    const buf = exportarComparativaAXlsx(
+      filasComparativa,
+      empresa,
+      datosAnterior.periodo || "Anterior",
+      datosActual.periodo || "Actual"
+    );
+    const safe = empresa.replace(/[^\w\-]+/g, "_").slice(0, 40);
+    descargarBuffer(
+      buf,
+      `analisis_comparativo_${safe}.xlsx`,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  }
+
+  function exportComparativoPdf() {
+    const empresa = datosActual.razonSocial || datosAnterior.razonSocial || "empresa";
+    const blob = generarPdfComparativa(
+      empresa,
+      datosAnterior.periodo || "Anterior",
+      datosActual.periodo || "Actual",
+      filasComparativa
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safe = empresa.replace(/[^\w\-]+/g, "_").slice(0, 40);
+    a.download = `analisis_comparativo_${safe}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function activarEjercicioAnterior() {
+    setDosEjercicios(true);
+    setDatosAnterior({ ...datosEjemploAnterior });
+    setMontosBorrador((m) => ({ ...m, anterior: {} }));
+    setError("anterior", null);
   }
 
   return (
@@ -326,6 +474,13 @@ export default function App() {
             Ingresá balances y cuenta de resultados, o importá Excel con una fila por concepto (columna A) y el
             valor en la columna B. Los ratios se clasifican en situación
             económica / financiera y corto / largo plazo, con interpretación contextual para la empresa.
+            {dosEjercicios && (
+              <>
+                {" "}
+                Con dos ejercicios cargados podés comparar ratios entre el período anterior y el actual e
+                importar/exportar cada uno por separado.
+              </>
+            )}
           </p>
         </div>
         <div className="theme-switch" role="group" aria-label="Tema de la interfaz">
@@ -350,87 +505,231 @@ export default function App() {
         </div>
       </header>
 
-      <div className="toolbar">
-        <label className="file-btn">
-          Importar Excel
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={onArchivo} />
-        </label>
-        <button type="button" className="secondary" onClick={plantilla}>
-          Descargar plantilla
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => {
-            setDatos({ ...datosPorDefecto });
-            setMontosBorrador({});
-          }}
-        >
-          Restaurar ejemplo
-        </button>
-        <button type="button" onClick={exportXlsxDatos}>
-          Exportar datos (.xlsx)
-        </button>
-        <button type="button" onClick={exportXlsxAnalisis}>
-          Exportar análisis (.xlsx)
-        </button>
-        <button type="button" onClick={exportPdf}>
-          Exportar informe (.pdf)
-        </button>
-      </div>
-      {errorImport && <div className="error-msg">{errorImport}</div>}
-
-      <div className="panel">
-        <h2>Datos contables</h2>
-        <p className="form-montos-hint">
-          Montos con decimales: punto o coma como separador; si usás coma, los puntos se interpretan como miles
-          (ej. 1.234,56).
-        </p>
-        <div className="form-identificacion">{CAMPOS_IDENTIFICACION.map(campoInput)}</div>
-        <div className="form-tres-columnas">
-          <div className="form-columna">
-            <h3 className="form-columna-titulo">Activo</h3>
-            <div className="form-columna-campos">{COLUMNA_ACTIVO.map(campoInput)}</div>
-          </div>
-          <div className="form-columna">
-            <h3 className="form-columna-titulo">Pasivo</h3>
-            <div className="form-columna-campos">{COLUMNA_PASIVO.map(campoInput)}</div>
-          </div>
-          <div className="form-columna">
-            <h3 className="form-columna-titulo">Patrimonio neto y resultados</h3>
-            <div className="form-columna-campos">{COLUMNA_PATRIMONIO_Y_RESULTADOS.map(campoInput)}</div>
-          </div>
-        </div>
+      <div className="acciones-iniciales">
+        {!dosEjercicios ? (
+          <button type="button" className="btn-carga-anterior" onClick={activarEjercicioAnterior}>
+            Cargar ejercicio anterior
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="secondary btn-ocultar-anterior"
+            onClick={() => {
+              setDosEjercicios(false);
+              setError("anterior", null);
+            }}
+          >
+            Ocultar ejercicio anterior
+          </button>
+        )}
       </div>
 
-      <div className="panel">
-        <h2>Ratios e interpretación</h2>
-        {porGrupo.map(({ titulo, items }) => (
-          <div key={titulo} className="section-block">
-            <h2>{titulo}</h2>
-            {items.length === 0 ? (
-              <p className="subtitle" style={{ marginBottom: 0 }}>
-                Sin ratios en este bloque.
-              </p>
-            ) : (
-              items.map((r) => (
-                <article key={r.id} className="ratio-card">
-                  <header>
-                    <span className="title">{r.nombre}</span>
-                    <span className="valor">{fmtValor(r)}</span>
-                    <span className={`pill ${r.situacion === "financiera" ? "fin" : "eco"}`}>
-                      {r.situacion === "financiera" ? "Financiera" : "Económica"}
-                    </span>
-                    <span className="pill corto">{r.plazo === "corto" ? "Corto plazo" : "Largo plazo"}</span>
-                  </header>
-                  <div className="formula">{r.formula}</div>
-                  <p className="interpret">{r.explicacion}</p>
-                </article>
-              ))
-            )}
+      {!dosEjercicios ? (
+        <>
+          <div className="toolbar">
+            <label className="file-btn">
+              Importar Excel
+              <input
+                ref={fileRefActual}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => onArchivo("actual", e)}
+              />
+            </label>
+            <button type="button" className="secondary" onClick={plantilla}>
+              Descargar plantilla
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setDatosActual({ ...datosPorDefecto });
+                setMontosBorrador((m) => ({ ...m, actual: {} }));
+              }}
+            >
+              Restaurar ejemplo
+            </button>
+            <button type="button" onClick={() => exportXlsxDatos(datosActual, "actual")}>
+              Exportar datos (.xlsx)
+            </button>
+            <button type="button" onClick={() => exportXlsxAnalisis(datosActual, ratiosActual, "actual")}>
+              Exportar análisis (.xlsx)
+            </button>
+            <button type="button" onClick={() => exportPdf(datosActual, ratiosActual, "actual")}>
+              Exportar informe (.pdf)
+            </button>
           </div>
-        ))}
-      </div>
+          {errorImport.actual && <div className="error-msg">{errorImport.actual}</div>}
+        </>
+      ) : (
+        <>
+          <div className="toolbar toolbar-global">
+            <button type="button" className="secondary" onClick={plantilla}>
+              Descargar plantilla
+            </button>
+            <button type="button" className="secondary" onClick={restaurarEjemplos}>
+              Restaurar ejemplos (ambos períodos)
+            </button>
+            <button type="button" className="btn-comparativo" onClick={exportComparativoXlsx}>
+              Exportar comparativo (.xlsx)
+            </button>
+            <button type="button" className="btn-comparativo" onClick={exportComparativoPdf}>
+              Exportar comparativo (.pdf)
+            </button>
+          </div>
+
+          <div className="toolbar-doble">
+            <div className="toolbar-periodo">
+              <h3 className="toolbar-periodo-titulo">Ejercicio actual</h3>
+              <div className="toolbar">
+                <label className="file-btn">
+                  Importar Excel
+                  <input
+                    ref={fileRefActual}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => onArchivo("actual", e)}
+                  />
+                </label>
+                <button type="button" onClick={() => exportXlsxDatos(datosActual, "actual")}>
+                  Exportar datos (.xlsx)
+                </button>
+                <button type="button" onClick={() => exportXlsxAnalisis(datosActual, ratiosActual, "actual")}>
+                  Exportar análisis (.xlsx)
+                </button>
+                <button type="button" onClick={() => exportPdf(datosActual, ratiosActual, "actual")}>
+                  Exportar informe (.pdf)
+                </button>
+              </div>
+              {errorImport.actual && <div className="error-msg">{errorImport.actual}</div>}
+            </div>
+            <div className="toolbar-periodo">
+              <h3 className="toolbar-periodo-titulo">Ejercicio anterior</h3>
+              <div className="toolbar">
+                <label className="file-btn">
+                  Importar Excel
+                  <input
+                    ref={fileRefAnterior}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => onArchivo("anterior", e)}
+                  />
+                </label>
+                <button type="button" onClick={() => exportXlsxDatos(datosAnterior, "anterior")}>
+                  Exportar datos (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => exportXlsxAnalisis(datosAnterior, ratiosAnterior, "anterior")}
+                >
+                  Exportar análisis (.xlsx)
+                </button>
+                <button type="button" onClick={() => exportPdf(datosAnterior, ratiosAnterior, "anterior")}>
+                  Exportar informe (.pdf)
+                </button>
+              </div>
+              {errorImport.anterior && <div className="error-msg">{errorImport.anterior}</div>}
+            </div>
+          </div>
+        </>
+      )}
+
+      {!dosEjercicios ? (
+        <>
+          <PanelDatosContables
+            titulo="Datos contables"
+            datos={datosActual}
+            setDatos={setDatosActual}
+            borrador={montosBorrador.actual}
+            setBorrador={(action) =>
+              setMontosBorrador((m) => ({
+                ...m,
+                actual: typeof action === "function" ? action(m.actual) : action,
+              }))
+            }
+          />
+          <BloqueRatios titulo="Ratios e interpretación" porGrupo={porGrupoActual} />
+        </>
+      ) : (
+        <>
+          <div className="dos-columnas-form">
+            <PanelDatosContables
+              titulo="Datos contables — ejercicio actual"
+              datos={datosActual}
+              setDatos={setDatosActual}
+              borrador={montosBorrador.actual}
+              setBorrador={(action) =>
+                setMontosBorrador((m) => ({
+                  ...m,
+                  actual: typeof action === "function" ? action(m.actual) : action,
+                }))
+              }
+            />
+            <PanelDatosContables
+              titulo="Datos contables — ejercicio anterior"
+              datos={datosAnterior}
+              setDatos={setDatosAnterior}
+              borrador={montosBorrador.anterior}
+              setBorrador={(action) =>
+                setMontosBorrador((m) => ({
+                  ...m,
+                  anterior: typeof action === "function" ? action(m.anterior) : action,
+                }))
+              }
+            />
+          </div>
+          <BloqueRatios titulo="Ratios e interpretación — ejercicio actual" porGrupo={porGrupoActual} />
+          <BloqueRatios titulo="Ratios e interpretación — ejercicio anterior" porGrupo={porGrupoAnterior} />
+          <div className="panel panel-comparativo">
+            <h2>Análisis comparativo (ejercicio anterior → actual)</h2>
+            <p className="form-montos-hint">
+              Comparación ratio a ratio con variación y causas probables según la evolución de partidas entre
+              períodos. Exportá el detalle completo con &quot;Exportar comparativo&quot; arriba.
+            </p>
+            {filasComparativa.map((f) => (
+              <article key={f.id} className="ratio-card ratio-card-comparativo">
+                <header>
+                  <span className="title">{f.nombre}</span>
+                  <span className={`pill ${f.situacionLabel === "Financiera" ? "fin" : "eco"}`}>
+                    {f.situacionLabel}
+                  </span>
+                  <span className="pill corto">{f.plazoLabel}</span>
+                </header>
+                <div className="comparativo-valores">
+                  <span>
+                    <strong>Anterior:</strong> {f.valorAnterior}
+                  </span>
+                  <span>
+                    <strong>Actual:</strong> {f.valorActual}
+                  </span>
+                </div>
+                <p className="comparativo-var">{f.variacionResumen}</p>
+                <p className="interpret">{f.analisisCausas}</p>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
     </>
   );
+}
+
+function agruparRatiosPorSeccion(ratios: RatioCalculado[]) {
+  const clave = (s: RatioCalculado["situacion"], p: RatioCalculado["plazo"]) => `${s}-${p}`;
+  const map = new Map<string, RatioCalculado[]>();
+  for (const r of ratios) {
+    const k = clave(r.situacion, r.plazo);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k)!.push(r);
+  }
+  const orden: [RatioCalculado["situacion"], RatioCalculado["plazo"]][] = [
+    ["economica", "corto"],
+    ["economica", "largo"],
+    ["financiera", "corto"],
+    ["financiera", "largo"],
+  ];
+  return orden.map(([s, p]) => ({
+    titulo: grupoTitulo(s, p),
+    items: map.get(clave(s, p)) ?? [],
+  }));
 }

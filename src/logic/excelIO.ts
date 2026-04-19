@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx-js-style";
 import type { DatosFinancieros, RatioCalculado } from "../types";
+import type { FilaComparativa } from "./comparativaRatios";
 import { CAMPOS_IMPORT_EXCEL } from "../types";
 
 const ALIAS: Record<string, keyof DatosFinancieros> = {
@@ -452,6 +453,71 @@ export function exportarRatiosAXlsx(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Análisis");
   XLSX.utils.book_append_sheet(wb, wsForm, "Fórmulas");
+  return XLSX.write(wb, {
+    bookType: "xlsx",
+    type: "array",
+    cellStyles: true,
+  });
+}
+
+const FILAS_ENCABEZADO_COMPARATIVA = 5;
+
+function aplicarEstilosHojaComparativa(ws: XLSX.WorkSheet) {
+  const ref = ws["!ref"];
+  if (!ref) return;
+  const range = XLSX.utils.decode_range(ref);
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (!cell) continue;
+      const prev = cell.s ?? {};
+      const s: XLSX.CellStyle = { ...prev };
+      if (R < FILAS_ENCABEZADO_COMPARATIVA) {
+        s.font = { ...prev.font, bold: true };
+      }
+      cell.s = s;
+    }
+  }
+}
+
+export function exportarComparativaAXlsx(
+  filas: FilaComparativa[],
+  empresa: string,
+  etiquetaEjercicioAnterior: string,
+  etiquetaEjercicioActual: string
+): ArrayBuffer {
+  const filasHoja: (string | number)[][] = [
+    ["Análisis comparativo de ratios"],
+    ["Empresa", empresa],
+    ["Ejercicio anterior", etiquetaEjercicioAnterior],
+    ["Ejercicio actual", etiquetaEjercicioActual],
+    [],
+    [
+      "Ratio",
+      "Situación",
+      "Plazo",
+      `Valor (${etiquetaEjercicioAnterior})`,
+      `Valor (${etiquetaEjercicioActual})`,
+      "Variación",
+      "Análisis de causas de la variación",
+    ],
+    ...filas.map((f) => [
+      f.nombre,
+      f.situacionLabel,
+      f.plazoLabel,
+      f.valorAnterior,
+      f.valorActual,
+      f.variacionResumen,
+      f.analisisCausas,
+    ]),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(filasHoja);
+  aplicarEstilosHojaComparativa(ws);
+  ws["!cols"] = anchosColumnasLibres(filasHoja, 7, [36, 22, 22, 22, 22, 40, 100]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Comparativo");
   return XLSX.write(wb, {
     bookType: "xlsx",
     type: "array",

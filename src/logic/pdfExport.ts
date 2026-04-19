@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { DatosFinancieros, RatioCalculado } from "../types";
+import type { FilaComparativa } from "./comparativaRatios";
 import { formatearValorRatio } from "./formatoRatios";
 
 export function generarPdfAnalisis(d: DatosFinancieros, ratios: RatioCalculado[]): Blob {
@@ -63,6 +64,88 @@ export function generarPdfAnalisis(d: DatosFinancieros, ratios: RatioCalculado[]
     doc.setFont("helvetica", "normal");
     doc.text(bloque, margin, cursorY);
     cursorY += bloque.length * 3.6 + 6;
+  }
+
+  return doc.output("blob");
+}
+
+export function generarPdfComparativa(
+  empresa: string,
+  etiquetaAnt: string,
+  etiquetaAct: string,
+  filas: FilaComparativa[]
+): Blob {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const margin = 12;
+  let y = margin;
+
+  doc.setFontSize(15);
+  doc.text("Análisis comparativo de ratios", margin, y);
+  y += 7;
+  doc.setFontSize(9.5);
+  doc.setTextColor(70);
+  doc.text(`${empresa}`, margin, y);
+  y += 5;
+  doc.text(`Ejercicio anterior: ${etiquetaAnt}  ·  Ejercicio actual: ${etiquetaAct}`, margin, y);
+  y += 8;
+  doc.setTextColor(0);
+
+  const body = filas.map((f) => [
+    f.nombre,
+    f.situacionLabel,
+    f.plazoLabel,
+    f.valorAnterior,
+    f.valorActual,
+    f.variacionResumen,
+  ]);
+
+  autoTable(doc, {
+    startY: y,
+    head: [
+      [
+        "Ratio",
+        "Sit.",
+        "Plazo",
+        "Ant.",
+        "Act.",
+        "Variación",
+      ],
+    ],
+    body,
+    styles: { fontSize: 6, cellPadding: 1 },
+    headStyles: { fillColor: [41, 98, 120] },
+    columnStyles: {
+      0: { cellWidth: 34 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 18 },
+      4: { cellWidth: 18 },
+      5: { cellWidth: 52 },
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+
+  doc.setFontSize(10);
+  doc.text("Análisis de causas por ratio", margin, finalY + 8);
+
+  let cursorY = finalY + 14;
+  doc.setFontSize(7.5);
+
+  for (const f of filas) {
+    const bloque = doc.splitTextToSize(`${f.nombre}: ${f.analisisCausas}`, 186);
+    const h = bloque.length * 3.2 + 5;
+    if (cursorY + h > 285) {
+      doc.addPage();
+      cursorY = margin;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.text(f.nombre, margin, cursorY);
+    cursorY += 3.5;
+    doc.setFont("helvetica", "normal");
+    doc.text(bloque, margin, cursorY);
+    cursorY += bloque.length * 3.2 + 5;
   }
 
   return doc.output("blob");
