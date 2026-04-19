@@ -1,0 +1,5 @@
+{
+  "usuarios": [
+    { "usuario": "admin", "clave": "admin" }
+  ]
+}

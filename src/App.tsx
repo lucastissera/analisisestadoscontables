@@ -1,4 +1,14 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import AppFooter from "./AppFooter";
+import LoginScreen from "./LoginScreen";
+import {
+  USUARIOS_RESPALDO,
+  cargarUsuariosDesdeServidor,
+  limpiarSesion,
+  persistirInicioSesion,
+  sesionGuardadaValida,
+  type UsuarioRegistro,
+} from "./auth/usuarios";
 import { datosPorDefecto } from "./data/defaultData";
 import {
   exportarComparativaAXlsx,
@@ -340,7 +350,7 @@ function BloqueRatios({ titulo, porGrupo }: BloqueRatiosProps) {
   );
 }
 
-export default function App() {
+function ContenidoAnalisis() {
   const [datosActual, setDatosActual] = useState<DatosFinancieros>(() =>
     redondearDatosFinancieros({ ...datosPorDefecto }, DECIMALES_MONTOS)
   );
@@ -786,4 +796,65 @@ function agruparRatiosPorSeccion(ratios: RatioCalculado[]) {
     titulo: grupoTitulo(s, p),
     items: map.get(clave(s, p)) ?? [],
   }));
+}
+
+export default function App() {
+  const [sesionActiva, setSesionActiva] = useState(() => sesionGuardadaValida());
+  const [usuarios, setUsuarios] = useState<UsuarioRegistro[] | null>(null);
+
+  useEffect(() => {
+    let cancel = false;
+    cargarUsuariosDesdeServidor()
+      .then((lista) => {
+        if (!cancel) setUsuarios(lista);
+      })
+      .catch(() => {
+        if (!cancel) setUsuarios([...USUARIOS_RESPALDO]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  /** Si la sesión expira mientras la app está abierta, vuelve al login. */
+  useEffect(() => {
+    if (!sesionActiva) return;
+    function verificarVencimiento() {
+      if (!sesionGuardadaValida()) {
+        limpiarSesion();
+        setSesionActiva(false);
+      }
+    }
+    const id = setInterval(verificarVencimiento, 30_000);
+    window.addEventListener("focus", verificarVencimiento);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", verificarVencimiento);
+    };
+  }, [sesionActiva]);
+
+  function onSesionIniciada() {
+    persistirInicioSesion();
+    setSesionActiva(true);
+  }
+
+  if (!sesionActiva) {
+    return (
+      <div className="app-layout">
+        <main className="app-main app-main--login">
+          <LoginScreen usuarios={usuarios} onSesionIniciada={onSesionIniciada} />
+        </main>
+        <AppFooter />
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-layout">
+      <main className="app-main">
+        <ContenidoAnalisis />
+      </main>
+      <AppFooter />
+    </div>
+  );
 }
