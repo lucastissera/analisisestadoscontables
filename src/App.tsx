@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { datosPorDefecto } from "./data/defaultData";
 import {
   exportarDatosAXlsx,
@@ -86,6 +86,51 @@ function grupoTitulo(s: "economica" | "financiera", p: "corto" | "largo") {
   return `${sit} — ${pl}`;
 }
 
+type Tema = "light" | "dark";
+
+function leerTemaGuardado(): Tema {
+  try {
+    const t = localStorage.getItem("theme");
+    if (t === "light" || t === "dark") return t;
+  } catch {
+    /* ignore */
+  }
+  return "dark";
+}
+
+function IconSol() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </svg>
+  );
+}
+
+function IconLuna() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [datos, setDatos] = useState<DatosFinancieros>({ ...datosPorDefecto });
   /** Texto libre mientras el input tiene foco (permite tipear "12." sin que se borre el punto). */
@@ -94,6 +139,16 @@ export default function App() {
   >({});
   const [errorImport, setErrorImport] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [tema, setTema] = useState<Tema>(leerTemaGuardado);
+
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-theme", tema);
+    try {
+      localStorage.setItem("theme", tema);
+    } catch {
+      /* ignore */
+    }
+  }, [tema]);
 
   const ratios = useMemo(() => calcularRatios(datos), [datos]);
 
@@ -264,12 +319,36 @@ export default function App() {
 
   return (
     <>
-      <h1>Análisis de estados contables</h1>
-      <p className="subtitle">
-        Ingresá balances y cuenta de resultados, o importá Excel con una fila por concepto (columna A) y el
-        valor en la columna B. Los ratios se clasifican en situación
-        económica / financiera y corto / largo plazo, con interpretación contextual para la empresa.
-      </p>
+      <header className="app-header">
+        <div className="app-header-text">
+          <h1>Análisis de estados contables</h1>
+          <p className="subtitle">
+            Ingresá balances y cuenta de resultados, o importá Excel con una fila por concepto (columna A) y el
+            valor en la columna B. Los ratios se clasifican en situación
+            económica / financiera y corto / largo plazo, con interpretación contextual para la empresa.
+          </p>
+        </div>
+        <div className="theme-switch" role="group" aria-label="Tema de la interfaz">
+          <button
+            type="button"
+            title="Modo claro"
+            aria-label="Modo claro"
+            aria-pressed={tema === "light"}
+            onClick={() => setTema("light")}
+          >
+            <IconSol />
+          </button>
+          <button
+            type="button"
+            title="Modo oscuro"
+            aria-label="Modo oscuro"
+            aria-pressed={tema === "dark"}
+            onClick={() => setTema("dark")}
+          >
+            <IconLuna />
+          </button>
+        </div>
+      </header>
 
       <div className="toolbar">
         <label className="file-btn">
