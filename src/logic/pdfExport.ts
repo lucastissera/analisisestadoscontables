@@ -23,21 +23,19 @@ export function generarPdfAnalisis(d: DatosFinancieros, ratios: RatioCalculado[]
     r.situacion === "economica" ? "Económica" : "Financiera",
     r.plazo === "corto" ? "Corto" : "Largo",
     formatearValorRatio(r.formato, r.valor),
-    r.formula,
   ]);
 
   autoTable(doc, {
     startY: y,
-    head: [["Ratio", "Situación", "Plazo", "Valor", "Fórmula"]],
+    head: [["Ratio", "Situación", "Plazo", "Valor"]],
     body,
     styles: { fontSize: 7, cellPadding: 1.5 },
     headStyles: { fillColor: [41, 98, 120] },
     columnStyles: {
-      0: { cellWidth: 38 },
-      1: { cellWidth: 22 },
-      2: { cellWidth: 16 },
-      3: { cellWidth: 18 },
-      4: { cellWidth: 62 },
+      0: { cellWidth: 78 },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 32 },
     },
     margin: { left: margin, right: margin },
   });
