@@ -1,5 +1,6 @@
 {
   "usuarios": [
     { "usuario": "admin", "clave": "admin" }
+    { "usuario": "lucas", "clave": "admin" }
   ]
 }
