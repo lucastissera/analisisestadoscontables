@@ -1,41 +1,40 @@
 import { FormEvent, useState } from "react";
-import type { UsuarioRegistro } from "./auth/usuarios";
-import { validarCredenciales } from "./auth/usuarios";
 
 const WA_NUMERO = "5493513132914";
 const WA_MENSAJE =
   "Buen día! Quiero dar de alta mi usuario en el sistema de Análisis de Estados Contables";
 
 type Props = {
-  usuarios: UsuarioRegistro[] | null;
+  intentarLogin: (usuario: string, clave: string) => Promise<boolean>;
   onSesionIniciada: () => void;
 };
 
-export default function LoginScreen({ usuarios, onSesionIniciada }: Props) {
+export default function LoginScreen({ intentarLogin, onSesionIniciada }: Props) {
   const [usuario, setUsuario] = useState("");
   const [clave, setClave] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
   function abrirWhatsAppNuevoUsuario() {
     const url = `https://wa.me/${WA_NUMERO}?text=${encodeURIComponent(WA_MENSAJE)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  function onSubmit(e: FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!usuarios || usuarios.length === 0) {
-      setError("No hay usuarios cargados. Revisá el archivo usuarios.json en la carpeta public.");
-      return;
+    setEnviando(true);
+    try {
+      const ok = await intentarLogin(usuario, clave);
+      if (!ok) {
+        setError("Usuario o contraseña incorrectos.");
+        return;
+      }
+      onSesionIniciada();
+    } finally {
+      setEnviando(false);
     }
-    if (!validarCredenciales(usuario, clave, usuarios)) {
-      setError("Usuario o contraseña incorrectos.");
-      return;
-    }
-    onSesionIniciada();
   }
-
-  const cargando = usuarios === null;
 
   return (
     <div className="login-screen">
@@ -52,7 +51,7 @@ export default function LoginScreen({ usuarios, onSesionIniciada }: Props) {
               autoComplete="username"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
-              disabled={cargando}
+              disabled={enviando}
             />
           </label>
           <label className="field">
@@ -63,14 +62,14 @@ export default function LoginScreen({ usuarios, onSesionIniciada }: Props) {
               autoComplete="current-password"
               value={clave}
               onChange={(e) => setClave(e.target.value)}
-              disabled={cargando}
+              disabled={enviando}
             />
           </label>
 
           {error && <div className="error-msg login-error">{error}</div>}
 
-          <button type="submit" className="login-btn" disabled={cargando}>
-            {cargando ? "Cargando…" : "Ingresar"}
+          <button type="submit" className="login-btn" disabled={enviando}>
+            {enviando ? "Verificando…" : "Ingresar"}
           </button>
         </form>
 

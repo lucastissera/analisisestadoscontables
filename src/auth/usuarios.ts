@@ -48,7 +48,8 @@ export function limpiarSesion(): void {
 
 export async function cargarUsuariosDesdeServidor(): Promise<UsuarioRegistro[]> {
   const base = import.meta.env.BASE_URL || "/";
-  const url = `${base}usuarios.json`;
+  /** Evita que el navegador sirva una copia vieja del JSON tras editarlo. */
+  const url = `${base}usuarios.json?t=${Date.now()}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar usuarios.json");
   const data: unknown = await res.json();

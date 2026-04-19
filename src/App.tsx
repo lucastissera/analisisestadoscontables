@@ -7,7 +7,7 @@ import {
   limpiarSesion,
   persistirInicioSesion,
   sesionGuardadaValida,
-  type UsuarioRegistro,
+  validarCredenciales,
 } from "./auth/usuarios";
 import { datosPorDefecto } from "./data/defaultData";
 import {
@@ -800,21 +800,16 @@ function agruparRatiosPorSeccion(ratios: RatioCalculado[]) {
 
 export default function App() {
   const [sesionActiva, setSesionActiva] = useState(() => sesionGuardadaValida());
-  const [usuarios, setUsuarios] = useState<UsuarioRegistro[] | null>(null);
 
-  useEffect(() => {
-    let cancel = false;
-    cargarUsuariosDesdeServidor()
-      .then((lista) => {
-        if (!cancel) setUsuarios(lista);
-      })
-      .catch(() => {
-        if (!cancel) setUsuarios([...USUARIOS_RESPALDO]);
-      });
-    return () => {
-      cancel = true;
-    };
-  }, []);
+  /** Vuelve a leer `usuarios.json` en cada intento (así los cambios en el archivo se aplican sin recargar la página). */
+  async function intentarLogin(usuario: string, clave: string): Promise<boolean> {
+    try {
+      const lista = await cargarUsuariosDesdeServidor();
+      return validarCredenciales(usuario, clave, lista);
+    } catch {
+      return validarCredenciales(usuario, clave, USUARIOS_RESPALDO);
+    }
+  }
 
   /** Si la sesión expira mientras la app está abierta, vuelve al login. */
   useEffect(() => {
@@ -842,7 +837,7 @@ export default function App() {
     return (
       <div className="app-layout">
         <main className="app-main app-main--login">
-          <LoginScreen usuarios={usuarios} onSesionIniciada={onSesionIniciada} />
+          <LoginScreen intentarLogin={intentarLogin} onSesionIniciada={onSesionIniciada} />
         </main>
         <AppFooter />
       </div>
