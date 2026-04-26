@@ -18,7 +18,7 @@ import {
   exportarRatiosAXlsx,
   importarDesdeArchivo,
 } from "./logic/excelIO";
-import { generarFilasComparativa } from "./logic/comparativaRatios";
+import { generarFilasComparativa, type FilaComparativa } from "./logic/comparativaRatios";
 import { generarPdfAnalisis, generarPdfComparativa } from "./logic/pdfExport";
 import { formatearValorRatio } from "./logic/formatoRatios";
 import {
@@ -358,13 +358,11 @@ function AlertaEcuacionContable({ datos, etiqueta }: { datos: DatosFinancieros; 
   );
 }
 
+type GrupoRatios = { titulo: string; items: RatioCalculado[] };
+
 type BloqueRatiosProps = {
   titulo: string;
-  porGrupo: {
-    titulo: string;
-    items: RatioCalculado[];
-  }[];
-  /** Muestra la ayuda de apartados plegables (en modo dos columnas, solo hace falta en uno). */
+  porGrupo: GrupoRatios[];
   pistaPlegable?: boolean;
 };
 
@@ -374,35 +372,41 @@ function BloqueRatios({ titulo, porGrupo, pistaPlegable = true }: BloqueRatiosPr
       <h2>{titulo}</h2>
       {pistaPlegable && (
         <p className="form-montos-hint ratio-plegable-hint">
-          Cada ratio está en un apartado plegable; tocá o hacé clic en la fila para abrir fórmula e interpretación.
+          Abrí cada bloque según situación (financiera o económica) y plazo. Dentro verás la lista de ratios con
+          fórmula e interpretación.
         </p>
       )}
       {porGrupo.map(({ titulo: t, items }) => (
-        <div key={t} className="section-block">
-          <h2 className="ratio-seccion-titulo">{t}</h2>
-          {items.length === 0 ? (
-            <p className="subtitle" style={{ marginBottom: 0 }}>
-              Sin ratios en este bloque.
-            </p>
-          ) : (
-            items.map((r) => (
-              <details key={r.id} className="ratio-details">
-                <summary className="ratio-details-summary">
-                  <span className="title">{r.nombre}</span>
-                  <span className="valor">{fmtValor(r)}</span>
-                  <span className={`pill ${r.situacion === "financiera" ? "fin" : "eco"}`}>
-                    {r.situacion === "financiera" ? "Financiera" : "Económica"}
-                  </span>
-                  <span className="pill corto">{r.plazo === "corto" ? "Corto plazo" : "Largo plazo"}</span>
-                </summary>
-                <div className="ratio-details-body">
+        <details key={t} className="ratio-bloque-details">
+          <summary className="ratio-bloque-summary">
+            <span className="ratio-bloque-titulo">{t}</span>
+            <span className="ratio-bloque-contador">
+              {items.length} ratio{items.length === 1 ? "" : "s"}
+            </span>
+          </summary>
+          <div className="ratio-bloque-body">
+            {items.length === 0 ? (
+              <p className="subtitle ratio-bloque-vacio" style={{ marginBottom: 0 }}>
+                Sin ratios en este bloque.
+              </p>
+            ) : (
+              items.map((r) => (
+                <article key={r.id} className="ratio-card">
+                  <header>
+                    <span className="title">{r.nombre}</span>
+                    <span className="valor">{fmtValor(r)}</span>
+                    <span className={`pill ${r.situacion === "financiera" ? "fin" : "eco"}`}>
+                      {r.situacion === "financiera" ? "Financiera" : "Económica"}
+                    </span>
+                    <span className="pill corto">{r.plazo === "corto" ? "Corto plazo" : "Largo plazo"}</span>
+                  </header>
                   <div className="formula">{r.formula}</div>
                   <p className="interpret">{r.explicacion}</p>
-                </div>
-              </details>
-            ))
-          )}
-        </div>
+                </article>
+              ))
+            )}
+          </div>
+        </details>
       ))}
     </div>
   );
@@ -455,6 +459,11 @@ function ContenidoAnalisis() {
   const filasComparativa = useMemo(
     () => generarFilasComparativa(ratiosAnterior, ratiosActual, datosAnterior, datosActual),
     [ratiosAnterior, ratiosActual, datosAnterior, datosActual]
+  );
+
+  const gruposComparativa = useMemo(
+    () => agruparComparativasEnBloques(filasComparativa),
+    [filasComparativa]
   );
 
   function setError(ej: EjercicioId, msg: string | null) {
@@ -805,38 +814,48 @@ function ContenidoAnalisis() {
           <div className="panel panel-comparativo">
             <h2>Análisis comparativo (ejercicio anterior → actual)</h2>
             <p className="form-montos-hint">
-              Cada fila se despliega al hacer clic. Comparación ratio a ratio con variación y causas; a la
-              izquierda el ejercicio anterior y a la derecha el actual. Podés exportar con &quot;Exportar
-              comparativo&quot; arriba.
+              Abrí cada bloque (mismo criterio que en ratios). Dentro, comparación por ratio: a la izquierda el
+              ejercicio anterior y a la derecha el actual. Podés exportar con &quot;Exportar comparativo&quot;
+              arriba.
             </p>
-            {filasComparativa.map((f) => (
-              <details key={f.id} className="ratio-card-comparativo ratio-details ratio-details-comparativo">
-                <summary className="ratio-details-summary comparativo-summary">
-                  <span className="title">{f.nombre}</span>
-                  <span className={`pill ${f.situacionLabel === "Financiera" ? "fin" : "eco"}`}>
-                    {f.situacionLabel}
+            {gruposComparativa.map(({ titulo, items }) => (
+              <details key={titulo} className="ratio-bloque-details panel-comparativo-bloque">
+                <summary className="ratio-bloque-summary">
+                  <span className="ratio-bloque-titulo">{titulo}</span>
+                  <span className="ratio-bloque-contador">
+                    {items.length} ratio{items.length === 1 ? "" : "s"}
                   </span>
-                  <span className="pill corto">{f.plazoLabel}</span>
                 </summary>
-                <div className="ratio-details-body">
-                  <div className="comparativo-valores">
-                    <div className="comparativo-valor-celda comparativo-valor-izq">
-                      <span className="comparativo-valor-etiq">
-                        Ejercicio anterior
-                        {datosAnterior.periodo ? ` (${datosAnterior.periodo})` : ""}
-                      </span>
-                      <span className="comparativo-valor-num">{f.valorAnterior}</span>
-                    </div>
-                    <div className="comparativo-valor-celda comparativo-valor-der">
-                      <span className="comparativo-valor-etiq">
-                        Ejercicio actual
-                        {datosActual.periodo ? ` (${datosActual.periodo})` : ""}
-                      </span>
-                      <span className="comparativo-valor-num">{f.valorActual}</span>
-                    </div>
-                  </div>
-                  <p className="comparativo-var">{f.variacionResumen}</p>
-                  <p className="interpret">{f.analisisCausas}</p>
+                <div className="ratio-bloque-body">
+                  {items.map((f) => (
+                    <article key={f.id} className="ratio-card ratio-card-comparativo">
+                      <header>
+                        <span className="title">{f.nombre}</span>
+                        <span className={`pill ${f.situacionLabel === "Financiera" ? "fin" : "eco"}`}>
+                          {f.situacionLabel}
+                        </span>
+                        <span className="pill corto">{f.plazoLabel}</span>
+                      </header>
+                      <div className="comparativo-valores">
+                        <div className="comparativo-valor-celda comparativo-valor-izq">
+                          <span className="comparativo-valor-etiq">
+                            Ejercicio anterior
+                            {datosAnterior.periodo ? ` (${datosAnterior.periodo})` : ""}
+                          </span>
+                          <span className="comparativo-valor-num">{f.valorAnterior}</span>
+                        </div>
+                        <div className="comparativo-valor-celda comparativo-valor-der">
+                          <span className="comparativo-valor-etiq">
+                            Ejercicio actual
+                            {datosActual.periodo ? ` (${datosActual.periodo})` : ""}
+                          </span>
+                          <span className="comparativo-valor-num">{f.valorActual}</span>
+                        </div>
+                      </div>
+                      <p className="comparativo-var">{f.variacionResumen}</p>
+                      <p className="interpret">{f.analisisCausas}</p>
+                    </article>
+                  ))}
                 </div>
               </details>
             ))}
@@ -856,14 +875,47 @@ function agruparRatiosPorSeccion(ratios: RatioCalculado[]) {
     map.get(k)!.push(r);
   }
   const orden: [RatioCalculado["situacion"], RatioCalculado["plazo"]][] = [
-    ["economica", "corto"],
-    ["economica", "largo"],
     ["financiera", "corto"],
     ["financiera", "largo"],
+    ["economica", "corto"],
+    ["economica", "largo"],
   ];
   return orden.map(([s, p]) => ({
     titulo: grupoTitulo(s, p),
     items: map.get(clave(s, p)) ?? [],
+  }));
+}
+
+const BLOQUES_COMPARATIVA = ["fin-corto", "fin-largo", "eco-corto", "eco-largo"] as const;
+
+type ClaveBloqueComp = (typeof BLOQUES_COMPARATIVA)[number];
+
+function claveBloqueComparativa(f: FilaComparativa): ClaveBloqueComp {
+  const fin = f.situacionLabel === "Financiera";
+  const corto = f.plazoLabel === "Corto plazo";
+  if (fin && corto) return "fin-corto";
+  if (fin && !corto) return "fin-largo";
+  if (!fin && corto) return "eco-corto";
+  return "eco-largo";
+}
+
+function tituloBloqueComparativa(k: ClaveBloqueComp): string {
+  const s: "financiera" | "economica" =
+    k === "fin-corto" || k === "fin-largo" ? "financiera" : "economica";
+  const p: "corto" | "largo" = k === "fin-corto" || k === "eco-corto" ? "corto" : "largo";
+  return grupoTitulo(s, p);
+}
+
+function agruparComparativasEnBloques(filas: FilaComparativa[]) {
+  const map = new Map<ClaveBloqueComp, FilaComparativa[]>();
+  for (const k of BLOQUES_COMPARATIVA) map.set(k, []);
+  for (const f of filas) {
+    const k = claveBloqueComparativa(f);
+    map.get(k)!.push(f);
+  }
+  return BLOQUES_COMPARATIVA.map((k) => ({
+    titulo: tituloBloqueComparativa(k),
+    items: map.get(k) ?? [],
   }));
 }
 

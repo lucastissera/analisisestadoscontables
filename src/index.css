@@ -456,6 +456,60 @@ input[type="file"] {
   margin: -0.2rem 0 1rem;
 }
 
+/* Un <details> por bloque (situación + plazo); los ratios van como .ratio-card en el interior */
+.ratio-bloque-details {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+  background: var(--surface2);
+  overflow: hidden;
+}
+
+.ratio-bloque-summary {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.ratio-bloque-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ratio-bloque-details[open] .ratio-bloque-summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.ratio-bloque-titulo {
+  color: var(--text);
+}
+
+.ratio-bloque-contador {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ratio-bloque-body {
+  padding: 0.65rem 1rem 0.85rem;
+}
+
+.ratio-bloque-body .ratio-card:last-child {
+  margin-bottom: 0;
+}
+
+.panel-comparativo-bloque {
+  background: var(--surface);
+}
+
 .ratio-details-comparativo {
   background: var(--surface2);
 }
