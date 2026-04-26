@@ -40,13 +40,13 @@ export function generarPdfAnalisis(d: DatosFinancieros, ratios: RatioCalculado[]
     margin: { left: margin, right: margin },
   });
 
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable
-    .finalY;
+  doc.addPage();
+  const cursorYInicio = margin;
 
   doc.setFontSize(11);
-  doc.text("Interpretación por ratio", margin, finalY + 10);
+  doc.text("Interpretación por ratio", margin, cursorYInicio);
 
-  let cursorY = finalY + 16;
+  let cursorY = cursorYInicio + 8;
   doc.setFontSize(8.5);
 
   for (const r of ratios) {
@@ -126,12 +126,13 @@ export function generarPdfComparativa(
     margin: { left: margin, right: margin },
   });
 
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  doc.addPage();
+  const cursorYCausas = margin;
 
   doc.setFontSize(10);
-  doc.text("Análisis de causas por ratio", margin, finalY + 8);
+  doc.text("Análisis de causas por ratio", margin, cursorYCausas);
 
-  let cursorY = finalY + 14;
+  let cursorY = cursorYCausas + 8;
   doc.setFontSize(7.5);
 
   for (const f of filas) {

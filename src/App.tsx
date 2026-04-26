@@ -300,8 +300,8 @@ function PanelDatosContables({
     <div className="panel">
       <h2>{titulo}</h2>
       <p className="form-montos-hint">
-        Montos con decimales: punto o coma como separador; si usás coma, los puntos se interpretan como miles
-        (ej. 1.234,56).
+        Montos: en pantalla miles con punto y decimales con coma. Al ingresar, coma o punto como separador
+        decimal; si usás coma, los puntos se interpretan como miles (ej. 1.234,56).
         {decimalesMontos !== undefined && (
           <> En este bloque los importes numéricos se muestran y guardan con {decimalesMontos} decimales.</>
         )}

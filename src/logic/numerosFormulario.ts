@@ -31,13 +31,13 @@ export function parseMontoIngreso(raw: string): number {
 }
 
 /**
- * Valor en el input: punto como separador decimal (estable al tipear decimales).
- * El parseo acepta también coma y miles con punto (p. ej. 1.234,56).
+ * Valor en el input: miles con punto y decimales con coma (es-AR).
+ * El parseo acepta coma decimal y miles con punto (p. ej. 1.234,56).
  */
 export function montoAStringEdicion(n: number): string {
   if (!Number.isFinite(n)) return "";
-  return n.toLocaleString("en-US", {
-    useGrouping: false,
+  return n.toLocaleString("es-AR", {
+    useGrouping: true,
     maximumFractionDigits: 20,
   });
 }
@@ -45,8 +45,8 @@ export function montoAStringEdicion(n: number): string {
 /** Monto en el input con cantidad fija de decimales (p. ej. ejercicio anterior). */
 export function montoAStringEdicionDecimales(n: number, decimales: number): string {
   if (!Number.isFinite(n)) return "";
-  return n.toLocaleString("en-US", {
-    useGrouping: false,
+  return n.toLocaleString("es-AR", {
+    useGrouping: true,
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   });
