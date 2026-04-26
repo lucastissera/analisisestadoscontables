@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Qué ofrece el sistema — Análisis de estados contables</title>
+    <title>Qué esperar del presente servicio — Análisis de estados contables</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -43,7 +43,7 @@
         line-height: 1.25;
       }
       .lede {
-        color: var(--muted);
+        color: var(--line);
         font-size: 1.05rem;
         margin: 0 0 1.75rem;
       }
@@ -80,49 +80,33 @@
         height: auto;
         display: block;
       }
-      .note {
-        font-size: 0.8rem;
-        color: var(--muted);
-        margin-top: 0.65rem;
-      }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <h1>Qué podés esperar de este servicio</h1>
-      <p class="lede">
-        Guía resumida para quienes evalúan la herramienta antes de contratar. Las imágenes se
-        <strong>generan automáticamente</strong> a partir de la app y datos de demostración (mismo criterio que
-        al importar un Excel relleno con los campos de balance y resultados). No tenés que subir archivos: en el
-        repositorio se regeneran con <code>npm run build:con-guia</code> (compila y vuelve a generar
-        <code>public/guia/captura-*.png</code>), o con <code>npm run build</code> y después
-        <code>npm run guia-capturas</code>. Si en algún momento querés imágenes
-        propias, reemplazá esos <strong>PNG</strong> en <code>public/guia/</code> o editá
-        <code>public/guia-nuevos-usuarios.html</code>.
-      </p>
+      <h1>Qué esperar del presente servicio</h1>
+      <p class="lede">Guía general para comprender el funcionamiento de la herramienta</p>
 
       <section>
         <h2>1. Carga y organización de datos contables</h2>
         <p>
-          Ingresá balances y cuenta de resultados en el formulario, o importá un Excel con conceptos en
-          columna A y valores en B. Así se alimenta el cálculo de los ratios.
+          Ingresá los datos de tu balance en el formulario, o importá un Excel con los conceptos necesarios
+          para alimentar el cálculo de los ratios.
         </p>
         <div class="shot">
           <img src="guia/captura-datos.png" width="800" height="420" alt="Pantalla de datos contables en el sistema" />
         </div>
-        <p class="note">Generada con <code>npm run guia-capturas</code> (datos de demostración 2025).</p>
       </section>
 
       <section>
-        <h2>2. Ratios e interpretación (por bloque)</h2>
+        <h2>2. Ratios e interpretación</h2>
         <p>
-          Los ratios se agrupan en cuatro bloques: situación financiera y económica, en corto y largo plazo.
-          En cada bloque se muestra fórmula, valor e interpretación para el período.
+          Los ratios se agrupan en cuatro bloques: situación financiera y económica, en corto y largo plazo. En
+          cada bloque se muestra fórmula, valor e interpretación para el período.
         </p>
         <div class="shot">
           <img src="guia/captura-ratios.png" width="800" height="420" alt="Ratios desplegados por situación y plazo" />
         </div>
-        <p class="note">Generada con <code>npm run guia-capturas</code> (primer bloque de ratios abierto).</p>
       </section>
 
       <section>
@@ -139,18 +123,16 @@
             alt="Vista de análisis comparativo entre dos ejercicios"
           />
         </div>
-        <p class="note">Generada con <code>npm run guia-capturas</code> (2024 → 2025).</p>
       </section>
 
       <section>
-        <h2>4. Tema, exportación y sesión</h2>
+        <h2>4. Exportación e información comercial</h2>
         <p>
-          En la app podés alternar <strong>modo claro u oscuro</strong>, importar o exportar datos y ratios,
-          <strong>cerrar sesión</strong> de forma explícita y volver a ingresar cuando quieras.
+          En la app podés importar o exportar datos y ratios, tanto en formato Excel como PDF.
         </p>
         <p>
-          Para solicitar un usuario, desde el inicio de sesión podés usar el enlace a WhatsApp
-          (alta y consultas comerciales).
+          Para solicitar un usuario, desde el inicio de sesión podés usar el enlace a WhatsApp (alta y
+          consultas comerciales).
         </p>
       </section>
     </div>
