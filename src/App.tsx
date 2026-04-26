@@ -412,7 +412,11 @@ function BloqueRatios({ titulo, porGrupo, pistaPlegable = true }: BloqueRatiosPr
   );
 }
 
-function ContenidoAnalisis() {
+type ContenidoAnalisisProps = {
+  onCerrarSesion: () => void;
+};
+
+function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
   const [datosActual, setDatosActual] = useState<DatosFinancieros>(() =>
     redondearDatosFinancieros({ ...datosPorDefecto }, DECIMALES_MONTOS)
   );
@@ -600,24 +604,29 @@ function ContenidoAnalisis() {
             )}
           </p>
         </div>
-        <div className="theme-switch" role="group" aria-label="Tema de la interfaz">
-          <button
-            type="button"
-            title="Modo claro"
-            aria-label="Modo claro"
-            aria-pressed={tema === "light"}
-            onClick={() => setTema("light")}
-          >
-            <IconSol />
-          </button>
-          <button
-            type="button"
-            title="Modo oscuro"
-            aria-label="Modo oscuro"
-            aria-pressed={tema === "dark"}
-            onClick={() => setTema("dark")}
-          >
-            <IconLuna />
+        <div className="app-header-utilities">
+          <div className="theme-switch" role="group" aria-label="Tema de la interfaz">
+            <button
+              type="button"
+              title="Modo claro"
+              aria-label="Modo claro"
+              aria-pressed={tema === "light"}
+              onClick={() => setTema("light")}
+            >
+              <IconSol />
+            </button>
+            <button
+              type="button"
+              title="Modo oscuro"
+              aria-label="Modo oscuro"
+              aria-pressed={tema === "dark"}
+              onClick={() => setTema("dark")}
+            >
+              <IconLuna />
+            </button>
+          </div>
+          <button type="button" className="header-cerrar-sesion" onClick={onCerrarSesion}>
+            Cerrar sesión
           </button>
         </div>
       </header>
@@ -808,7 +817,6 @@ function ContenidoAnalisis() {
             <BloqueRatios
               titulo="Ratios e interpretación — ejercicio actual"
               porGrupo={porGrupoActual}
-              pistaPlegable={false}
             />
           </div>
           <div className="panel panel-comparativo">
@@ -968,7 +976,12 @@ export default function App() {
   return (
     <div className="app-layout">
       <main className="app-main">
-        <ContenidoAnalisis />
+        <ContenidoAnalisis
+          onCerrarSesion={() => {
+            limpiarSesion();
+            setSesionActiva(false);
+          }}
+        />
       </main>
       <AppFooter />
     </div>

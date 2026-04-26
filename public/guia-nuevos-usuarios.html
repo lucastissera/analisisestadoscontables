@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qué ofrece el sistema — Análisis de estados contables</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0f1419;
+        --card: #1a222c;
+        --border: #2f3d4d;
+        --text: #e8eef4;
+        --muted: #8fa3b6;
+        --accent: #3db8a6;
+        --line: #c5d2df;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "DM Sans", system-ui, sans-serif;
+        background: radial-gradient(1200px 600px at 10% -10%, #1a3d38 0%, transparent 50%),
+          radial-gradient(900px 500px at 100% 0%, #2a2650 0%, transparent 45%), var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        padding: 1.5rem 1.25rem 2.5rem;
+      }
+      .wrap {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+        line-height: 1.25;
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 1.05rem;
+        margin: 0 0 1.75rem;
+      }
+      section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem 1.25rem 1.35rem;
+        margin-bottom: 1.15rem;
+      }
+      section h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0 0 0.75rem;
+        color: var(--line);
+      }
+      section p {
+        margin: 0 0 0.75rem;
+        color: var(--line);
+        font-size: 0.95rem;
+      }
+      section p:last-child {
+        margin-bottom: 0;
+      }
+      .shot {
+        margin-top: 0.9rem;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        line-height: 0;
+      }
+      .shot img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .note {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-top: 0.65rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Qué podés esperar de este servicio</h1>
+      <p class="lede">
+        Guía resumida para quienes evalúan la herramienta antes de contratar. Las imágenes de abajo son
+        ejemplos: podés reemplazar los archivos en la carpeta <code>public/guia/</code> por capturas
+        reales (idealmente <strong>PNG</strong> o <strong>JPG</strong> de tu pantalla) y actualizar las
+        etiquetas <code>&lt;img src="…"&gt;</code> en el archivo <code>public/guia-nuevos-usuarios.html</code>.
+      </p>
+
+      <section>
+        <h2>1. Carga y organización de datos contables</h2>
+        <p>
+          Ingresá balances y cuenta de resultados en el formulario, o importá un Excel con conceptos en
+          columna A y valores en B. Así se alimenta el cálculo de los ratios.
+        </p>
+        <div class="shot">
+          <img src="guia/ejemplo-datos.svg" width="800" height="420" alt="Pantalla de datos contables en el sistema" />
+        </div>
+        <p class="note">Reemplazá <code>guia/ejemplo-datos.svg</code> por una captura de la sección de datos.</p>
+      </section>
+
+      <section>
+        <h2>2. Ratios e interpretación (por bloque)</h2>
+        <p>
+          Los ratios se agrupan en cuatro bloques: situación financiera y económica, en corto y largo plazo.
+          En cada bloque se muestra fórmula, valor e interpretación para el período.
+        </p>
+        <div class="shot">
+          <img src="guia/ejemplo-ratios.svg" width="800" height="420" alt="Ratios desplegados por situación y plazo" />
+        </div>
+        <p class="note">Reemplazá <code>guia/ejemplo-ratios.svg</code> por una captura de un bloque de ratios abierto.</p>
+      </section>
+
+      <section>
+        <h2>3. Análisis comparativo (dos ejercicios)</h2>
+        <p>
+          Si trabajás con un período anterior y uno actual, el sistema ofrece comparación ratio a ratio, con
+          variación y comentario de posibles causas, exportable a Excel o PDF.
+        </p>
+        <div class="shot">
+          <img
+            src="guia/ejemplo-comparativo.svg"
+            width="800"
+            height="420"
+            alt="Vista de análisis comparativo entre dos ejercicios"
+          />
+        </div>
+        <p class="note">Reemplazá <code>guia/ejemplo-comparativo.svg</code> por una captura del panel comparativo.</p>
+      </section>
+
+      <section>
+        <h2>4. Tema, exportación y sesión</h2>
+        <p>
+          En la app podés alternar <strong>modo claro u oscuro</strong>, importar o exportar datos y ratios,
+          <strong>cerrar sesión</strong> de forma explícita y volver a ingresar cuando quieras.
+        </p>
+        <p>
+          Para solicitar un usuario, desde el inicio de sesión podés usar el enlace a WhatsApp
+          (alta y consultas comerciales).
+        </p>
+      </section>
+    </div>
+  </body>
+</html>

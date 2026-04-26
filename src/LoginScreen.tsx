@@ -41,6 +41,16 @@ export default function LoginScreen({ intentarLogin, onSesionIniciada }: Props) 
       <div className="login-panel">
         <h1 className="login-titulo">Análisis de estados contables</h1>
         <p className="login-subtitulo">Iniciá sesión para continuar</p>
+        <p className="login-guia">
+          <a
+            className="login-guia-link"
+            href={`${import.meta.env.BASE_URL}guia-nuevos-usuarios.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ¿Primera vez? Guía con capturas: qué podés esperar del sistema
+          </a>
+        </p>
 
         <form className="login-form" onSubmit={onSubmit}>
           <label className="field">
