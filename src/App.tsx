@@ -29,6 +29,13 @@ import {
   redondearDecimales,
 } from "./logic/numerosFormulario";
 import { comprobarEcuacionContable } from "./logic/ecuacionContable";
+import {
+  abrirAnalisisArmaRatioEnNuevaPestana,
+  analizarArmaRatio,
+  generarHtmlAnalisisArmaRatio,
+  listarRatiosArmaOptions,
+  parseObjetivoRatio,
+} from "./logic/armaRatio";
 import { calcularRatios } from "./logic/ratios";
 import type { DatosFinancieros, RatioCalculado } from "./types";
 
@@ -460,6 +467,13 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
     [ratiosAnterior]
   );
 
+  const opcionesArma = useMemo(() => listarRatiosArmaOptions(), []);
+  const [armaRatioId, setArmaRatioId] = useState(
+    () => opcionesArma[0]?.id ?? "liquidez_corriente"
+  );
+  const [armaObjetivo, setArmaObjetivo] = useState("");
+  const [errorArma, setErrorArma] = useState<string | null>(null);
+
   const filasComparativa = useMemo(
     () => generarFilasComparativa(ratiosAnterior, ratiosActual, datosAnterior, datosActual),
     [ratiosAnterior, ratiosActual, datosAnterior, datosActual]
@@ -586,6 +600,60 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
     setError("anterior", null);
   }
 
+  function procesarArmaRatio() {
+    setErrorArma(null);
+    const o = parseObjetivoRatio(armaObjetivo);
+    if (o === null) {
+      setErrorArma(
+        "Ingresá un valor numérico objetivo (misma unidad que en pantalla: %, días, veces, índice, etc.)."
+      );
+      return;
+    }
+    const a = analizarArmaRatio(datosActual, armaRatioId, o);
+    const html = generarHtmlAnalisisArmaRatio(datosActual.razonSocial, datosActual.periodo, a);
+    abrirAnalisisArmaRatioEnNuevaPestana(html);
+  }
+
+  const bloqueArmaTuRatio = (
+    <div className="arma-ratio-bloque">
+      <h3
+        className="arma-ratio-titulo"
+        title="Selecciona tu ratio a modificar y el valor objetivo, el sistema determinará en base a tu balance, cómo deben modificarse los datos contables para arribar al ratio objetivo"
+      >
+        Arma tu ratio
+      </h3>
+      {dosEjercicios && <p className="arma-ratio-hint-ej">Usa los datos del ejercicio actual.</p>}
+      <div className="arma-ratio-fila">
+        <select
+          className="arma-ratio-select"
+          value={armaRatioId}
+          onChange={(e) => setArmaRatioId(e.target.value)}
+          aria-label="Ratio a analizar"
+        >
+          {opcionesArma.map((op) => (
+            <option key={op.id} value={op.id}>
+              {op.nombre}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          className="arma-ratio-objetivo"
+          value={armaObjetivo}
+          onChange={(e) => setArmaObjetivo(e.target.value)}
+          placeholder="Valor objetivo"
+          inputMode="decimal"
+          autoComplete="off"
+          aria-label="Valor objetivo del ratio"
+        />
+        <button type="button" className="arma-ratio-procesar" onClick={procesarArmaRatio}>
+          Procesar
+        </button>
+      </div>
+      {errorArma && <div className="error-msg arma-ratio-error">{errorArma}</div>}
+    </div>
+  );
+
   return (
     <>
       <header className="app-header">
@@ -685,6 +753,7 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
               Exportar informe (.pdf)
             </button>
           </div>
+          {bloqueArmaTuRatio}
           {errorImport.actual && <div className="error-msg">{errorImport.actual}</div>}
         </>
       ) : (
@@ -703,6 +772,7 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
               Exportar comparativo (.pdf)
             </button>
           </div>
+          {bloqueArmaTuRatio}
 
           <div className="toolbar-doble">
             <div className="toolbar-periodo">
