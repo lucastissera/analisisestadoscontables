@@ -1,39 +1,40 @@
 import type { DatosFinancieros } from "../types";
 
+/** Valores iniciales en cero: el usuario carga su balance; los totales de activo deben conciliar con pasivo + patrimonio. */
 export const datosPorDefecto: DatosFinancieros = {
-  razonSocial: "Empresa de ejemplo S.A.",
-  periodo: "2025",
+  razonSocial: "",
+  periodo: "",
 
-  activoCorriente: 420000,
-  efectivoYEquivalentes: 95000,
-  creditosPorVentas: 180000,
-  inventarios: 120000,
-  otrosActivosCorrientes: 25000,
+  activoCorriente: 0,
+  efectivoYEquivalentes: 0,
+  creditosPorVentas: 0,
+  inventarios: 0,
+  otrosActivosCorrientes: 0,
 
-  activoNoCorriente: 680000,
-  bienesDeUso: 520000,
-  inversionesLargoPlazo: 80000,
-  intangibles: 45000,
-  otrosActivosNoCorrientes: 35000,
+  activoNoCorriente: 0,
+  bienesDeUso: 0,
+  inversionesLargoPlazo: 0,
+  intangibles: 0,
+  otrosActivosNoCorrientes: 0,
 
-  pasivoCorriente: 280000,
-  deudaFinancieraCortoPlazo: 95000,
-  proveedores: 140000,
-  otrosPasivosCorrientes: 45000,
+  pasivoCorriente: 0,
+  deudaFinancieraCortoPlazo: 0,
+  proveedores: 0,
+  otrosPasivosCorrientes: 0,
 
-  pasivoNoCorriente: 310000,
-  deudaFinancieraLargoPlazo: 240000,
-  otrosPasivosNoCorrientes: 70000,
+  pasivoNoCorriente: 0,
+  deudaFinancieraLargoPlazo: 0,
+  otrosPasivosNoCorrientes: 0,
 
-  patrimonioNeto: 510000,
+  patrimonioNeto: 0,
 
-  ventasNetas: 1850000,
-  costoDeVentas: 1120000,
-  gastosOperativos: 420000,
-  gastosFinancieros: 28000,
-  resultadoNeto: 185000,
+  ventasNetas: 0,
+  costoDeVentas: 0,
+  gastosOperativos: 0,
+  gastosFinancieros: 0,
+  resultadoNeto: 0,
 
-  amortizacionesYDepreciaciones: 72000,
+  amortizacionesYDepreciaciones: 0,
   flujoEfectivoOperativo: null,
-  inversionesActivosFijos: 65000,
+  inversionesActivosFijos: 0,
 };

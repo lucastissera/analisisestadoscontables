@@ -282,6 +282,18 @@ label.field span.name {
   color: var(--text);
 }
 
+label.field span.name[title] {
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--muted);
+  text-underline-offset: 2px;
+}
+
+.form-columna-titulo[title] {
+  cursor: help;
+}
+
 input[type="text"],
 input[type="number"] {
   font-family: "JetBrains Mono", ui-monospace, monospace;
@@ -354,12 +366,14 @@ input[type="file"] {
   margin-bottom: 0.35rem;
 }
 
-.ratio-card .title {
+.ratio-card .title,
+.ratio-details .title {
   font-weight: 600;
   font-size: 0.95rem;
 }
 
-.ratio-card .valor {
+.ratio-card .valor,
+.ratio-details .valor {
   font-family: "JetBrains Mono", monospace;
   font-size: 1.05rem;
   color: var(--accent);
@@ -389,17 +403,100 @@ input[type="file"] {
   color: var(--muted);
 }
 
-.ratio-card .formula {
+.ratio-card .formula,
+.ratio-details .formula {
   font-size: 0.75rem;
   color: var(--muted);
   font-family: "JetBrains Mono", monospace;
   margin-bottom: 0.5rem;
 }
 
-.ratio-card p.interpret {
+.ratio-card p.interpret,
+.ratio-details p.interpret {
   font-size: 0.82rem;
   color: var(--interpret);
   margin: 0;
+}
+
+.ratio-details {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+  background: var(--surface2);
+  overflow: hidden;
+}
+
+.ratio-details-summary {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+}
+
+.ratio-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ratio-details[open] .ratio-details-summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.ratio-details-body {
+  padding: 0.65rem 1rem 0.85rem;
+}
+
+.ratio-seccion-titulo {
+  margin: 0 0 0.5rem;
+}
+
+.ratio-plegable-hint {
+  margin: -0.2rem 0 1rem;
+}
+
+.ratio-details-comparativo {
+  background: var(--surface2);
+}
+
+.ratio-details-comparativo .comparativo-summary {
+  align-items: center;
+}
+
+.ecuacion-box {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+}
+
+.ecuacion-ok {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--text);
+  border-color: var(--accent-dim);
+}
+
+.ecuacion-aviso {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--warn);
+  color: var(--text);
+}
+
+.ecuacion-doble {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ecuacion-doble {
+    grid-template-columns: 1fr;
+  }
 }
 
 .section-block {

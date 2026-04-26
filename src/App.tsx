@@ -10,6 +10,7 @@ import {
   validarCredenciales,
 } from "./auth/usuarios";
 import { datosPorDefecto } from "./data/defaultData";
+import { leyendaCampo } from "./data/leyendasCampos";
 import {
   exportarComparativaAXlsx,
   exportarDatosAXlsx,
@@ -27,6 +28,7 @@ import {
   redondearDatosFinancieros,
   redondearDecimales,
 } from "./logic/numerosFormulario";
+import { comprobarEcuacionContable } from "./logic/ecuacionContable";
 import { calcularRatios } from "./logic/ratios";
 import type { DatosFinancieros, RatioCalculado } from "./types";
 
@@ -196,20 +198,25 @@ function PanelDatosContables({
   }
 
   function campoInput({ key, label, tipo }: CampoDef) {
+    const tip = leyendaCampo(key);
     return (
       <label key={key} className="field">
-        <span className="name">{label}</span>
+        <span className="name" title={tip}>
+          {label}
+        </span>
         {tipo === "texto" ? (
           <input
             type="text"
             value={String(datos[key])}
             onChange={(e) => actualizar(key, e.target.value as DatosFinancieros[typeof key])}
+            title={tip}
           />
         ) : key === "flujoEfectivoOperativo" ? (
           <input
             type="text"
             inputMode="decimal"
             autoComplete="off"
+            title={tip}
             placeholder="Vacío: RN + amortizaciones"
             value={
               borrador.flujoEfectivoOperativo !== undefined
@@ -218,14 +225,14 @@ function PanelDatosContables({
                   ? ""
                   : fmtMonto(datos.flujoEfectivoOperativo)
             }
-            onFocus={() => {
-              setBorrador((m) => ({
-                ...m,
-                flujoEfectivoOperativo:
-                  datos.flujoEfectivoOperativo === null
-                    ? ""
-                    : fmtMonto(datos.flujoEfectivoOperativo),
-              }));
+            onFocus={(e) => {
+              const cfo = datos.flujoEfectivoOperativo;
+              if (cfo === null || cfo === 0) {
+                setBorrador((m) => ({ ...m, flujoEfectivoOperativo: "" }));
+              } else {
+                setBorrador((m) => ({ ...m, flujoEfectivoOperativo: fmtMonto(cfo) }));
+                queueMicrotask(() => e.currentTarget.select());
+              }
             }}
             onChange={(e) => {
               setBorrador((m) => ({
@@ -253,14 +260,16 @@ function PanelDatosContables({
             type="text"
             inputMode="decimal"
             autoComplete="off"
-            value={
-              borrador[key] !== undefined ? borrador[key]! : fmtMonto(datos[key] as number)
-            }
-            onFocus={() => {
-              setBorrador((m) => ({
-                ...m,
-                [key]: fmtMonto(datos[key] as number),
-              }));
+            title={tip}
+            value={borrador[key] !== undefined ? borrador[key]! : fmtMonto(datos[key] as number)}
+            onFocus={(e) => {
+              const n = datos[key] as number;
+              if (n === 0) {
+                setBorrador((m) => ({ ...m, [key]: "" }));
+              } else {
+                setBorrador((m) => ({ ...m, [key]: fmtMonto(n) }));
+                queueMicrotask(() => e.currentTarget.select());
+              }
             }}
             onChange={(e) => {
               setBorrador((m) => ({ ...m, [key]: e.target.value }));
@@ -293,18 +302,58 @@ function PanelDatosContables({
       <div className="form-identificacion">{CAMPOS_IDENTIFICACION.map(campoInput)}</div>
       <div className="form-tres-columnas">
         <div className="form-columna">
-          <h3 className="form-columna-titulo">Activo</h3>
+          <h3
+            className="form-columna-titulo"
+            title="Bienes y derechos de la entidad. El total (activo corriente + no corriente) debe encajar con pasivo + patrimonio, según el balance."
+          >
+            Activo
+          </h3>
           <div className="form-columna-campos">{COLUMNA_ACTIVO.map(campoInput)}</div>
         </div>
         <div className="form-columna">
-          <h3 className="form-columna-titulo">Pasivo</h3>
+          <h3
+            className="form-columna-titulo"
+            title="Obligaciones a pagar a terceros. La suma de pasivo corriente y no corriente es el total del pasivo del balance (sin patrimonio)."
+          >
+            Pasivo
+          </h3>
           <div className="form-columna-campos">{COLUMNA_PASIVO.map(campoInput)}</div>
         </div>
         <div className="form-columna">
-          <h3 className="form-columna-titulo">Patrimonio neto y resultados</h3>
+          <h3
+            className="form-columna-titulo"
+            title="Patrimonio: recursos de los propietarios. Resultados: cuenta de resultados o estado de desempeño. El balance cuadra si activo = pasivo + patrimonio neto (al menos a nivel de totales)."
+          >
+            Patrimonio neto y resultados
+          </h3>
           <div className="form-columna-campos">{COLUMNA_PATRIMONIO_Y_RESULTADOS.map(campoInput)}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function formatMontoCorto(n: number): string {
+  return n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function AlertaEcuacionContable({ datos, etiqueta }: { datos: DatosFinancieros; etiqueta: string }) {
+  const c = comprobarEcuacionContable(datos);
+  if (c.ok) {
+    return (
+      <div className="ecuacion-box ecuacion-ok" role="status">
+        <strong>{etiqueta}:</strong> el total de activo ({formatMontoCorto(c.totalActivo)}) coincide con pasivo + patrimonio
+        neto ({formatMontoCorto(c.totalPasivoMasPat)}), según las cifras cargadas.
+      </div>
+    );
+  }
+  return (
+    <div className="ecuacion-box ecuacion-aviso" role="alert">
+      <strong>{etiqueta} — posible desvío en el balance:</strong> el activo total es{" "}
+      {formatMontoCorto(c.totalActivo)} y la suma de pasivo total ({formatMontoCorto(c.totalPasivo)} más
+      patrimonio neto {formatMontoCorto(c.pat)}) es {formatMontoCorto(c.totalPasivoMasPat)}.{" "}
+      <strong>Diferencia: {formatMontoCorto(c.diferencia)}</strong> (revisá totales o partidas; la ecuación
+      contable es Activo = Pasivo + Patrimonio neto).
     </div>
   );
 }
@@ -315,33 +364,42 @@ type BloqueRatiosProps = {
     titulo: string;
     items: RatioCalculado[];
   }[];
+  /** Muestra la ayuda de apartados plegables (en modo dos columnas, solo hace falta en uno). */
+  pistaPlegable?: boolean;
 };
 
-function BloqueRatios({ titulo, porGrupo }: BloqueRatiosProps) {
+function BloqueRatios({ titulo, porGrupo, pistaPlegable = true }: BloqueRatiosProps) {
   return (
     <div className="panel">
       <h2>{titulo}</h2>
+      {pistaPlegable && (
+        <p className="form-montos-hint ratio-plegable-hint">
+          Cada ratio está en un apartado plegable; tocá o hacé clic en la fila para abrir fórmula e interpretación.
+        </p>
+      )}
       {porGrupo.map(({ titulo: t, items }) => (
         <div key={t} className="section-block">
-          <h2>{t}</h2>
+          <h2 className="ratio-seccion-titulo">{t}</h2>
           {items.length === 0 ? (
             <p className="subtitle" style={{ marginBottom: 0 }}>
               Sin ratios en este bloque.
             </p>
           ) : (
             items.map((r) => (
-              <article key={r.id} className="ratio-card">
-                <header>
+              <details key={r.id} className="ratio-details">
+                <summary className="ratio-details-summary">
                   <span className="title">{r.nombre}</span>
                   <span className="valor">{fmtValor(r)}</span>
                   <span className={`pill ${r.situacion === "financiera" ? "fin" : "eco"}`}>
                     {r.situacion === "financiera" ? "Financiera" : "Económica"}
                   </span>
                   <span className="pill corto">{r.plazo === "corto" ? "Corto plazo" : "Largo plazo"}</span>
-                </header>
-                <div className="formula">{r.formula}</div>
-                <p className="interpret">{r.explicacion}</p>
-              </article>
+                </summary>
+                <div className="ratio-details-body">
+                  <div className="formula">{r.formula}</div>
+                  <p className="interpret">{r.explicacion}</p>
+                </div>
+              </details>
             ))
           )}
         </div>
@@ -686,6 +744,7 @@ function ContenidoAnalisis() {
 
       {!dosEjercicios ? (
         <>
+          <AlertaEcuacionContable datos={datosActual} etiqueta="Ecuación del balance" />
           <PanelDatosContables
             titulo="Datos contables"
             datos={datosActual}
@@ -703,6 +762,10 @@ function ContenidoAnalisis() {
         </>
       ) : (
         <>
+          <div className="ecuacion-doble">
+            <AlertaEcuacionContable datos={datosAnterior} etiqueta="Ecuación (ejercicio anterior)" />
+            <AlertaEcuacionContable datos={datosActual} etiqueta="Ecuación (ejercicio actual)" />
+          </div>
           <div className="dos-columnas-form">
             <PanelDatosContables
               titulo="Datos contables — ejercicio anterior"
@@ -733,43 +796,49 @@ function ContenidoAnalisis() {
           </div>
           <div className="dos-columnas-ratios">
             <BloqueRatios titulo="Ratios e interpretación — ejercicio anterior" porGrupo={porGrupoAnterior} />
-            <BloqueRatios titulo="Ratios e interpretación — ejercicio actual" porGrupo={porGrupoActual} />
+            <BloqueRatios
+              titulo="Ratios e interpretación — ejercicio actual"
+              porGrupo={porGrupoActual}
+              pistaPlegable={false}
+            />
           </div>
           <div className="panel panel-comparativo">
             <h2>Análisis comparativo (ejercicio anterior → actual)</h2>
             <p className="form-montos-hint">
-              Comparación ratio a ratio con variación y causas probables según la evolución de partidas entre
-              períodos. A la izquierda el ejercicio anterior y a la derecha el actual. Exportá el detalle con
-              &quot;Exportar comparativo&quot; arriba.
+              Cada fila se despliega al hacer clic. Comparación ratio a ratio con variación y causas; a la
+              izquierda el ejercicio anterior y a la derecha el actual. Podés exportar con &quot;Exportar
+              comparativo&quot; arriba.
             </p>
             {filasComparativa.map((f) => (
-              <article key={f.id} className="ratio-card ratio-card-comparativo">
-                <header>
+              <details key={f.id} className="ratio-card-comparativo ratio-details ratio-details-comparativo">
+                <summary className="ratio-details-summary comparativo-summary">
                   <span className="title">{f.nombre}</span>
                   <span className={`pill ${f.situacionLabel === "Financiera" ? "fin" : "eco"}`}>
                     {f.situacionLabel}
                   </span>
                   <span className="pill corto">{f.plazoLabel}</span>
-                </header>
-                <div className="comparativo-valores">
-                  <div className="comparativo-valor-celda comparativo-valor-izq">
-                    <span className="comparativo-valor-etiq">
-                      Ejercicio anterior
-                      {datosAnterior.periodo ? ` (${datosAnterior.periodo})` : ""}
-                    </span>
-                    <span className="comparativo-valor-num">{f.valorAnterior}</span>
+                </summary>
+                <div className="ratio-details-body">
+                  <div className="comparativo-valores">
+                    <div className="comparativo-valor-celda comparativo-valor-izq">
+                      <span className="comparativo-valor-etiq">
+                        Ejercicio anterior
+                        {datosAnterior.periodo ? ` (${datosAnterior.periodo})` : ""}
+                      </span>
+                      <span className="comparativo-valor-num">{f.valorAnterior}</span>
+                    </div>
+                    <div className="comparativo-valor-celda comparativo-valor-der">
+                      <span className="comparativo-valor-etiq">
+                        Ejercicio actual
+                        {datosActual.periodo ? ` (${datosActual.periodo})` : ""}
+                      </span>
+                      <span className="comparativo-valor-num">{f.valorActual}</span>
+                    </div>
                   </div>
-                  <div className="comparativo-valor-celda comparativo-valor-der">
-                    <span className="comparativo-valor-etiq">
-                      Ejercicio actual
-                      {datosActual.periodo ? ` (${datosActual.periodo})` : ""}
-                    </span>
-                    <span className="comparativo-valor-num">{f.valorActual}</span>
-                  </div>
+                  <p className="comparativo-var">{f.variacionResumen}</p>
+                  <p className="interpret">{f.analisisCausas}</p>
                 </div>
-                <p className="comparativo-var">{f.variacionResumen}</p>
-                <p className="interpret">{f.analisisCausas}</p>
-              </article>
+              </details>
             ))}
           </div>
         </>
