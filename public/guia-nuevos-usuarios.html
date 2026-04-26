@@ -91,10 +91,14 @@
     <div class="wrap">
       <h1>Qué podés esperar de este servicio</h1>
       <p class="lede">
-        Guía resumida para quienes evalúan la herramienta antes de contratar. Las imágenes de abajo son
-        ejemplos: podés reemplazar los archivos en la carpeta <code>public/guia/</code> por capturas
-        reales (idealmente <strong>PNG</strong> o <strong>JPG</strong> de tu pantalla) y actualizar las
-        etiquetas <code>&lt;img src="…"&gt;</code> en el archivo <code>public/guia-nuevos-usuarios.html</code>.
+        Guía resumida para quienes evalúan la herramienta antes de contratar. Las imágenes se
+        <strong>generan automáticamente</strong> a partir de la app y datos de demostración (mismo criterio que
+        al importar un Excel relleno con los campos de balance y resultados). No tenés que subir archivos: en el
+        repositorio se regeneran con <code>npm run build:con-guia</code> (compila y vuelve a generar
+        <code>public/guia/captura-*.png</code>), o con <code>npm run build</code> y después
+        <code>npm run guia-capturas</code>. Si en algún momento querés imágenes
+        propias, reemplazá esos <strong>PNG</strong> en <code>public/guia/</code> o editá
+        <code>public/guia-nuevos-usuarios.html</code>.
       </p>
 
       <section>
@@ -104,9 +108,9 @@
           columna A y valores en B. Así se alimenta el cálculo de los ratios.
         </p>
         <div class="shot">
-          <img src="guia/ejemplo-datos.svg" width="800" height="420" alt="Pantalla de datos contables en el sistema" />
+          <img src="guia/captura-datos.png" width="800" height="420" alt="Pantalla de datos contables en el sistema" />
         </div>
-        <p class="note">Reemplazá <code>guia/ejemplo-datos.svg</code> por una captura de la sección de datos.</p>
+        <p class="note">Generada con <code>npm run guia-capturas</code> (datos de demostración 2025).</p>
       </section>
 
       <section>
@@ -116,9 +120,9 @@
           En cada bloque se muestra fórmula, valor e interpretación para el período.
         </p>
         <div class="shot">
-          <img src="guia/ejemplo-ratios.svg" width="800" height="420" alt="Ratios desplegados por situación y plazo" />
+          <img src="guia/captura-ratios.png" width="800" height="420" alt="Ratios desplegados por situación y plazo" />
         </div>
-        <p class="note">Reemplazá <code>guia/ejemplo-ratios.svg</code> por una captura de un bloque de ratios abierto.</p>
+        <p class="note">Generada con <code>npm run guia-capturas</code> (primer bloque de ratios abierto).</p>
       </section>
 
       <section>
@@ -129,13 +133,13 @@
         </p>
         <div class="shot">
           <img
-            src="guia/ejemplo-comparativo.svg"
+            src="guia/captura-comparativo.png"
             width="800"
             height="420"
             alt="Vista de análisis comparativo entre dos ejercicios"
           />
         </div>
-        <p class="note">Reemplazá <code>guia/ejemplo-comparativo.svg</code> por una captura del panel comparativo.</p>
+        <p class="note">Generada con <code>npm run guia-capturas</code> (2024 → 2025).</p>
       </section>
 
       <section>
