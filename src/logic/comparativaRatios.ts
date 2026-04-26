@@ -7,10 +7,54 @@ export interface FilaComparativa {
   nombre: string;
   situacionLabel: string;
   plazoLabel: string;
+  /** "Mejoró" | "Empeoró" | "Sin cambio", o null si no es comparable (N/D). */
+  tendenciaVsAnterior: string | null;
   valorAnterior: string;
   valorActual: string;
   variacionResumen: string;
   analisisCausas: string;
+}
+
+/**
+ * Ratios donde un valor numérico más bajo suele interpretarse como mejora operativa o de riesgo
+ * (endeudamiento, plazos operativos en días a cobrar/almacenar, apalancamiento DuPont).
+ * El resto se asume "a mayor valor, mejor" (rentabilidad, liquidez tipo cobertura, rotaciones, etc.).
+ */
+const RATIO_BAJO_ES_MEJOR = new Set<string>([
+  "endeudamiento_total",
+  "endeudamiento_patrimonial",
+  "deuda_financiera_sobre_ebitda",
+  "pasivo_total_sobre_ebitda",
+  "deuda_neta_sobre_ebitda",
+  "plazo_cobro_dias",
+  "plazo_inventario_dias",
+  "dupont_multiplicador_patrimonio",
+]);
+
+/** Mejoró / empeoró / sin cambio / N/D según valores numéricos y criterio por ratio. */
+export function tendenciaVsAnteriorRatio(
+  ratioId: string,
+  valorAnterior: number | null,
+  valorActual: number | null
+): string | null {
+  if (
+    valorAnterior === null ||
+    valorActual === null ||
+    !Number.isFinite(valorAnterior) ||
+    !Number.isFinite(valorActual)
+  ) {
+    return null;
+  }
+  const eps = 1e-9 * (1 + Math.abs(valorAnterior));
+  if (Math.abs(valorActual - valorAnterior) <= eps) {
+    return "Sin cambio";
+  }
+  const sube = valorActual > valorAnterior;
+  const bajoMejor = RATIO_BAJO_ES_MEJOR.has(ratioId);
+  if (bajoMejor) {
+    return sube ? "Empeoró" : "Mejoró";
+  }
+  return sube ? "Mejoró" : "Empeoró";
 }
 
 /** Variación relativa (%) del valor actual respecto del anterior. */
@@ -380,6 +424,7 @@ export function generarFilasComparativa(
       nombre: rAct.nombre,
       situacionLabel: rAct.situacion === "economica" ? "Económica" : "Financiera",
       plazoLabel: rAct.plazo === "corto" ? "Corto plazo" : "Largo plazo",
+      tendenciaVsAnterior: tendenciaVsAnteriorRatio(rAct.id, rAnt.valor, rAct.valor),
       valorAnterior: formatearValorRatio(rAct.formato, rAnt.valor),
       valorActual: formatearValorRatio(rAct.formato, rAct.valor),
       variacionResumen: resumenVariacionRatio(rAct.formato, rAnt.valor, rAct.valor),

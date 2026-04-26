@@ -913,6 +913,19 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
                           {f.situacionLabel}
                         </span>
                         <span className="pill corto">{f.plazoLabel}</span>
+                        {f.tendenciaVsAnterior && (
+                          <span
+                            className={`pill tendencia ${
+                              f.tendenciaVsAnterior === "Mejoró"
+                                ? "tendencia-mejor"
+                                : f.tendenciaVsAnterior === "Empeoró"
+                                  ? "tendencia-peor"
+                                  : "tendencia-igual"
+                            }`}
+                          >
+                            {f.tendenciaVsAnterior}
+                          </span>
+                        )}
                       </header>
                       <div className="comparativo-valores">
                         <div className="comparativo-valor-celda comparativo-valor-izq">

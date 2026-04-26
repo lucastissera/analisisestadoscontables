@@ -487,6 +487,29 @@ input[type="file"] {
   color: var(--muted);
 }
 
+.pill.tendencia {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.pill.tendencia-mejor {
+  background: rgba(16, 185, 129, 0.22);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.pill.tendencia-peor {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.pill.tendencia-igual {
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
 .ratio-card .formula,
 .ratio-details .formula {
   font-size: 0.75rem;

@@ -497,6 +497,7 @@ export function exportarComparativaAXlsx(
       "Ratio",
       "Situación",
       "Plazo",
+      "vs. anterior",
       `Valor (${etiquetaEjercicioAnterior})`,
       `Valor (${etiquetaEjercicioActual})`,
       "Variación",
@@ -506,6 +507,7 @@ export function exportarComparativaAXlsx(
       f.nombre,
       f.situacionLabel,
       f.plazoLabel,
+      f.tendenciaVsAnterior ?? "—",
       f.valorAnterior,
       f.valorActual,
       f.variacionResumen,
@@ -515,7 +517,7 @@ export function exportarComparativaAXlsx(
 
   const ws = XLSX.utils.aoa_to_sheet(filasHoja);
   aplicarEstilosHojaComparativa(ws);
-  ws["!cols"] = anchosColumnasLibres(filasHoja, 7, [36, 22, 22, 22, 22, 40, 100]);
+  ws["!cols"] = anchosColumnasLibres(filasHoja, 8, [36, 22, 22, 14, 22, 22, 40, 100]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Comparativo");
   return XLSX.write(wb, {
