@@ -14,9 +14,10 @@ import { leyendaCampo } from "./data/leyendasCampos";
 import {
   exportarComparativaAXlsx,
   exportarDatosAXlsx,
+  exportarPlantillaDosEjercicios,
   exportarPlantillaVacia,
   exportarRatiosAXlsx,
-  importarDesdeArchivo,
+  importarDesdeArchivoInteligente,
 } from "./logic/excelIO";
 import { generarFilasComparativa, type FilaComparativa } from "./logic/comparativaRatios";
 import { generarPdfAnalisis, generarPdfComparativa } from "./logic/pdfExport";
@@ -495,7 +496,26 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
     if (!f) return;
     try {
       const buf = await f.arrayBuffer();
-      const parcial = importarDesdeArchivo(buf);
+      const resultado = importarDesdeArchivoInteligente(buf);
+      if (resultado.modo === "dual") {
+        if (!dosEjercicios) {
+          setError(
+            ej,
+            "Este archivo corresponde a la plantilla de dos ejercicios. Activá «Comparar dos ejercicios» o usá la plantilla de un solo período."
+          );
+          return;
+        }
+        setDatosAnterior((prev) =>
+          redondearDatosFinancieros({ ...prev, ...resultado.anterior }, DECIMALES_MONTOS)
+        );
+        setDatosActual((prev) =>
+          redondearDatosFinancieros({ ...prev, ...resultado.actual }, DECIMALES_MONTOS)
+        );
+        setMontosBorrador({ actual: {}, anterior: {} });
+        setErrorImport({ anterior: null, actual: null });
+        return;
+      }
+      const parcial = resultado.datos;
       if (ej === "actual") {
         setDatosActual((prev) => redondearDatosFinancieros({ ...prev, ...parcial }, DECIMALES_MONTOS));
         setMontosBorrador((m) => ({ ...m, actual: {} }));
@@ -545,10 +565,12 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
   }
 
   function plantilla() {
-    const buf = exportarPlantillaVacia();
+    const buf = dosEjercicios ? exportarPlantillaDosEjercicios() : exportarPlantillaVacia();
     descargarBuffer(
       buf,
-      "plantilla_balance_analisis.xlsx",
+      dosEjercicios
+        ? "plantilla_balance_dos_ejercicios.xlsx"
+        : "plantilla_balance_analisis.xlsx",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
   }
@@ -660,16 +682,10 @@ function ContenidoAnalisis({ onCerrarSesion }: ContenidoAnalisisProps) {
         <div className="app-header-text">
           <h1>Análisis de estados contables</h1>
           <p className="subtitle">
-            Ingresá balances y cuenta de resultados, o importá Excel con una fila por concepto (columna A) y el
-            valor en la columna B. Los ratios se clasifican en situación
-            económica / financiera y corto / largo plazo, con interpretación contextual para la empresa.
-            {dosEjercicios && (
-              <>
-                {" "}
-                Con dos ejercicios cargados podés comparar ratios entre el período anterior y el actual e
-                importar/exportar cada uno por separado.
-              </>
-            )}
+            Ingresa los datos de tu balance (activo, pasivo, patrimonio, resultados) o importa un Excel con los
+            datos que tengas. Los ratios provistos se clasifican en situación económica y financiera, ambos en
+            corto y largo plazo, con la interpretación específica para tu empresa. Además, podés comparar los ratios
+            de la empresa en 2 ejercicios.
           </p>
         </div>
         <div className="app-header-utilities">

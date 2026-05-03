@@ -109,6 +109,38 @@ function parseNumero(v: unknown): number {
   return 0;
 }
 
+/** Etiquetas de fila en plantillas y exportación de datos (columna A). */
+const ETIQUETAS_CAMPO_IMPORT: Record<keyof DatosFinancieros, string> = {
+  razonSocial: "Razón social",
+  periodo: "Período / ejercicio",
+  activoCorriente: "Activo corriente (total)",
+  efectivoYEquivalentes: "Efectivo y equivalentes",
+  creditosPorVentas: "Créditos por ventas",
+  inventarios: "Inventarios",
+  otrosActivosCorrientes: "Otros activos corrientes",
+  activoNoCorriente: "Activo no corriente (total)",
+  bienesDeUso: "Bienes de uso",
+  inversionesLargoPlazo: "Inversiones largo plazo",
+  intangibles: "Intangibles",
+  otrosActivosNoCorrientes: "Otros activos no corrientes",
+  pasivoCorriente: "Pasivo corriente (total)",
+  deudaFinancieraCortoPlazo: "Deuda financiera corto plazo",
+  proveedores: "Proveedores",
+  otrosPasivosCorrientes: "Otros pasivos corrientes",
+  pasivoNoCorriente: "Pasivo no corriente (total)",
+  deudaFinancieraLargoPlazo: "Deuda financiera largo plazo",
+  otrosPasivosNoCorrientes: "Otros pasivos no corrientes",
+  patrimonioNeto: "Patrimonio neto",
+  ventasNetas: "Ventas netas",
+  costoDeVentas: "Costo de ventas",
+  gastosOperativos: "Gastos operativos",
+  gastosFinancieros: "Gastos financieros (intereses)",
+  resultadoNeto: "Resultado neto",
+  amortizacionesYDepreciaciones: "Amortizaciones y depreciaciones",
+  flujoEfectivoOperativo: "Flujo operativo (opcional)",
+  inversionesActivosFijos: "Inversiones en activos (CAPEX)",
+};
+
 function filaVacia(row: unknown[]): boolean {
   return row.every((c) => c === undefined || c === null || String(c).trim() === "");
 }
@@ -209,6 +241,7 @@ function aplicarEstilosHojaDatos(ws: XLSX.WorkSheet) {
   const ref = ws["!ref"];
   if (!ref) return;
   const range = XLSX.utils.decode_range(ref);
+  const colsValor: number[] = range.e.c >= 2 ? [1, 2] : [1];
 
   for (let R = range.s.r; R <= range.e.r; R++) {
     for (let C = range.s.c; C <= range.e.c; C++) {
@@ -223,7 +256,7 @@ function aplicarEstilosHojaDatos(ws: XLSX.WorkSheet) {
         s.font = { ...prev.font, bold: true };
       }
 
-      if (C === 1 && R >= FILAS_EMPRESA_NEGRITA) {
+      if (colsValor.includes(C) && R >= FILAS_EMPRESA_NEGRITA) {
         const v = cell.v;
         if (typeof v === "number" && Number.isFinite(v)) {
           s.numFmt = NUM_FMT_CONTABILIDAD;
@@ -281,45 +314,61 @@ export function importarDesdeArchivo(buffer: ArrayBuffer): Partial<DatosFinancie
   return importarDatosDesdeArrayDeFilas(rows);
 }
 
-export function exportarDatosAXlsx(d: DatosFinancieros): ArrayBuffer {
-  const etiquetas: Record<keyof DatosFinancieros, string> = {
-    razonSocial: "Razón social",
-    periodo: "Período / ejercicio",
-    activoCorriente: "Activo corriente (total)",
-    efectivoYEquivalentes: "Efectivo y equivalentes",
-    creditosPorVentas: "Créditos por ventas",
-    inventarios: "Inventarios",
-    otrosActivosCorrientes: "Otros activos corrientes",
-    activoNoCorriente: "Activo no corriente (total)",
-    bienesDeUso: "Bienes de uso",
-    inversionesLargoPlazo: "Inversiones largo plazo",
-    intangibles: "Intangibles",
-    otrosActivosNoCorrientes: "Otros activos no corrientes",
-    pasivoCorriente: "Pasivo corriente (total)",
-    deudaFinancieraCortoPlazo: "Deuda financiera corto plazo",
-    proveedores: "Proveedores",
-    otrosPasivosCorrientes: "Otros pasivos corrientes",
-    pasivoNoCorriente: "Pasivo no corriente (total)",
-    deudaFinancieraLargoPlazo: "Deuda financiera largo plazo",
-    otrosPasivosNoCorrientes: "Otros pasivos no corrientes",
-    patrimonioNeto: "Patrimonio neto",
-    ventasNetas: "Ventas netas",
-    costoDeVentas: "Costo de ventas",
-    gastosOperativos: "Gastos operativos",
-    gastosFinancieros: "Gastos financieros (intereses)",
-    resultadoNeto: "Resultado neto",
-    amortizacionesYDepreciaciones: "Amortizaciones y depreciaciones",
-    flujoEfectivoOperativo: "Flujo operativo (opcional)",
-    inversionesActivosFijos: "Inversiones en activos (CAPEX)",
-  };
+export type ResultadoImportExcel =
+  | { modo: "simple"; datos: Partial<DatosFinancieros> }
+  | {
+      modo: "dual";
+      anterior: Partial<DatosFinancieros>;
+      actual: Partial<DatosFinancieros>;
+    };
 
+function esEncabezadoPlantillaDosEjercicios(row: unknown[]): boolean {
+  if (!row || row.length < 3) return false;
+  const b = String(row[1] ?? "").trim().toLowerCase();
+  const c = String(row[2] ?? "").trim().toLowerCase();
+  return b.includes("anterior") && c.includes("actual");
+}
+
+function importarDatosDosEjerciciosDesdeFilas(rows: unknown[][]): {
+  anterior: Partial<DatosFinancieros>;
+  actual: Partial<DatosFinancieros>;
+} {
+  const anterior: Partial<DatosFinancieros> = {};
+  const actual: Partial<DatosFinancieros> = {};
+  let i = 0;
+  if (rows[0] && esEncabezadoPlantillaDosEjercicios(rows[0])) i = 1;
+  for (; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.length < 3) continue;
+    if (filaVacia(row as unknown[])) continue;
+    const k = normalizarClave(row[0]);
+    if (!k) continue;
+    asignarCelda(anterior, k, row[1]);
+    asignarCelda(actual, k, row[2]);
+  }
+  return { anterior, actual };
+}
+
+/** Detecta plantilla de dos ejercicios por la fila de encabezado y devuelve ambos períodos; si no, importa como una sola columna de valores. */
+export function importarDesdeArchivoInteligente(buffer: ArrayBuffer): ResultadoImportExcel {
+  const wb = XLSX.read(buffer, { type: "array" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as unknown[][];
+  if (rows[0] && esEncabezadoPlantillaDosEjercicios(rows[0])) {
+    const { anterior, actual } = importarDatosDosEjerciciosDesdeFilas(rows);
+    return { modo: "dual", anterior, actual };
+  }
+  return { modo: "simple", datos: importarDatosDesdeArrayDeFilas(rows) };
+}
+
+export function exportarDatosAXlsx(d: DatosFinancieros): ArrayBuffer {
   const filas: (string | number)[][] = [
     ["Concepto", "Valor"],
     ...CAMPOS_IMPORT_EXCEL.map((k) => {
       const v = d[k];
       const celda =
         v === null || v === undefined ? "" : (v as string | number);
-      return [etiquetas[k], celda];
+      return [ETIQUETAS_CAMPO_IMPORT[k], celda];
     }),
   ];
 
@@ -367,6 +416,25 @@ export function exportarPlantillaVacia(): ArrayBuffer {
     inversionesActivosFijos: 0,
   };
   return exportarDatosAXlsx(vacio);
+}
+
+/** Plantilla vacía con dos columnas de valores (período anterior y actual). */
+export function exportarPlantillaDosEjercicios(): ArrayBuffer {
+  const filas: (string | number)[][] = [
+    ["Concepto", "Ejercicio anterior", "Ejercicio actual"],
+    ...CAMPOS_IMPORT_EXCEL.map((k) => [ETIQUETAS_CAMPO_IMPORT[k], "", ""]),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws["!cols"] = anchosColumnasDesdeFilas(filas, 3);
+  aplicarEstilosHojaDatos(ws);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Datos");
+  return XLSX.write(wb, {
+    bookType: "xlsx",
+    type: "array",
+    cellStyles: true,
+  });
 }
 
 const FILAS_ENCABEZADO_ANALISIS = 4;
